@@ -1,0 +1,3 @@
+[console_scripts]
+QDL = qobuz_downloader:main
+qdl = qobuz_downloader:main
