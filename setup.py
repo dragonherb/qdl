@@ -26,7 +26,7 @@ setup(
     description="The complete Lossless and Hi-Res music downloader for Qobuz",
     long_description=read_file("README.md"),
     long_description_content_type="text/markdown",
-    url="https://github.com/vitiko98/Qobuz-DL",
+    url="https://github.com/dragonherb/qdl",
     install_requires=requirements,
     entry_points={
         "console_scripts": [

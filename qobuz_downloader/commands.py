@@ -136,7 +136,7 @@ def qdl_args(
         prog="QDL",
         description=(
             "The ultimate Qobuz music downloader.\nSee usage"
-            " examples on https://github.com/vitiko98/qobuz-dl"
+            " examples on https://github.com/dragonherb/qdl"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
