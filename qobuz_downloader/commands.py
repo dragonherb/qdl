@@ -136,7 +136,9 @@ def qdl_args(
         prog="QDL",
         description=(
             "The ultimate Qobuz music downloader.\nSee usage"
-            " examples on https://github.com/dragonherb/qdl"
+            " examples on https://github.com/dragonherb/qdl\n\n"
+            "* TIP: Set 'default_start_mode' in your config.ini to 'fun', 'dl', or 'lucky'\n"
+            "  to automatically start in that mode when running 'qdl' without arguments."
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )

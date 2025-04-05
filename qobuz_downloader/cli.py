@@ -59,6 +59,9 @@ def _reset_config(config_file):
     config["DEFAULT"]["folder_format"] = DEFAULT_FOLDER
     config["DEFAULT"]["track_format"] = DEFAULT_TRACK
     config["DEFAULT"]["smart_discography"] = "false"
+    # default_start_mode: Set to 'fun', 'dl', or 'lucky' to automatically start in that mode
+    # when running qdl without arguments. Set to 'none' to always show help when no arguments.
+    config["DEFAULT"]["default_start_mode"] = "none"
     with open(config_file, "w") as configfile:
         config.write(configfile)
     logging.info(
@@ -105,9 +108,6 @@ def _initial_checks():
         os.makedirs(CONFIG_PATH, exist_ok=True)
         _reset_config(CONFIG_FILE)
 
-    if len(sys.argv) < 2:
-        sys.exit(qdl_args().print_help())
-
 
 def main():
     _initial_checks()
@@ -121,6 +121,8 @@ def main():
         default_folder = config["DEFAULT"]["default_folder"]
         default_limit = config["DEFAULT"]["default_limit"]
         default_quality = config["DEFAULT"]["default_quality"]
+        default_start_mode = config["DEFAULT"]["default_start_mode"]
+        default_mode_active = False
         no_m3u = config.getboolean("DEFAULT", "no_m3u")
         albums_only = config.getboolean("DEFAULT", "albums_only")
         no_fallback = config.getboolean("DEFAULT", "no_fallback")
@@ -136,9 +138,26 @@ def main():
         secrets = [
             secret for secret in config["DEFAULT"]["secrets"].split(",") if secret
         ]
-        arguments = qdl_args(
-            default_quality, default_limit, default_folder
-        ).parse_args()
+        parser = qdl_args(default_quality, default_limit, default_folder)
+        
+        # Use default_start_mode if no arguments provided and mode is not 'none'
+        if len(sys.argv) < 2 and default_start_mode.lower() != 'none':
+            valid_modes = ['fun', 'dl', 'lucky']
+            if default_start_mode.lower() in valid_modes:
+                default_mode_active = True
+                sys.argv.append(default_start_mode.lower())
+                if default_start_mode.lower() == 'lucky':
+                    # Lucky mode requires a query parameter
+                    sys.argv.append('default_search')
+                logging.info(f"{YELLOW}Using default start mode: {default_start_mode}")
+            else:
+                logging.warning(f"{YELLOW}Invalid default_start_mode in config: {default_start_mode}. Valid options are 'none', 'fun', 'dl', or 'lucky'.")
+        
+        # If still no command provided, print help
+        if len(sys.argv) < 2:
+            sys.exit(parser.print_help())
+            
+        arguments = parser.parse_args()
     except (KeyError, UnicodeDecodeError, configparser.Error) as error:
         arguments = qdl_args().parse_args()
         if not arguments.reset:
