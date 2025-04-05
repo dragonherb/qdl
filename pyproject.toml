@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "QDL"
-version = "0.10.0.0"
+version = "0.11.0.0"
 description = "The complete Lossless and Hi-Res music downloader for Qobuz"
 readme = "README.md"
 authors = [

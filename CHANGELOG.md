@@ -5,7 +5,22 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10] - 2025-04-05
+## [0.11] - 2025-04-05
+
+### Major Changes
+- Full fork and rebranding from qobuz-dl to QDL
+- Updated all references to use the new GitHub repository at https://github.com/dragonherb/qdl
+- Command has been changed from "qobuz-dl" to "qdl" in all messages and documentation
+
+### Added
+- Default start mode feature via `default_start_mode` in config.ini
+- Automatic command execution when no arguments are given (configured via config.ini)
+
+### Changed
+- Improved code organization and removed redundant backup folders
+- Enhanced user experience with more intuitive command handling
+
+## [0.10] - 2025-04-01
 
 ### Added
 - Modern Python packaging with pyproject.toml
