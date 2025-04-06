@@ -101,7 +101,48 @@ class QobuzDL:
     def get_naming_mode(self, search_mode):
         """Get the naming mode based on search mode and configuration"""
         if self.dynamic_naming_mode:
+            # Check if we have a search mode alias defined
+            try:
+                # Look for an alias section in format_config.ini
+                alias_key = f"{search_mode}_search_mode"
+                
+                # First check if the exact search_mode has a mapping
+                if search_mode in self.format_config:
+                    return search_mode
+                    
+                # Check if there's a direct search_mode alias
+                if alias_key in self.format_config['DEFAULT']:
+                    return self.format_config['DEFAULT'][alias_key]
+                    
+                # Try to match by searching through all keys in format_config.ini
+                for section in self.format_config.sections():
+                    # Skip the actual formatting sections
+                    if section.endswith('_search_mode'):
+                        continue
+                        
+                    # Check if any key contains our search mode as value
+                    for key, value in self.format_config.items(section):
+                        if key.endswith('_search_mode') and search_mode.lower() in key.lower():
+                            return value
+                            
+                # Check standard URL type mappings as fallback
+                mode_mappings = {
+                    'artist': 'artist_discography_dg',
+                    'album': 'artist_album_release',
+                    'label': 'label_discography_lpk',
+                    'playlist': 'playlists_pls',
+                    'track': 'single_track_trk'
+                }
+                
+                if search_mode in mode_mappings:
+                    return mode_mappings[search_mode]
+            except (KeyError, configparser.Error) as e:
+                logger.debug(f"Error mapping search mode alias: {e}. Using search_mode directly.")
+            
+            # If all else fails, just use the search_mode directly
             return search_mode
+        
+        # When dynamic naming is disabled, just use the current_naming_mode
         return self.current_naming_mode
 
     def format_folder_name(self, album_data, search_mode):
