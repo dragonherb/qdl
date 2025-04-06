@@ -132,8 +132,26 @@ def main():
         no_database = config.getboolean("DEFAULT", "no_database")
         app_id = config["DEFAULT"]["app_id"]
         smart_discography = config.getboolean("DEFAULT", "smart_discography")
-        folder_format = config["DEFAULT"]["folder_format"]
-        track_format = config["DEFAULT"]["track_format"]
+        
+        # Get folder_format and track_format if they exist, otherwise use None
+        # This allows them to be commented out in config.ini when using format_config.ini
+        try:
+            folder_format = config["DEFAULT"]["folder_format"]
+            track_format = config["DEFAULT"]["track_format"]
+        except KeyError:
+            # Will use defaults from core.py when None
+            folder_format = None
+            track_format = None
+        
+        # Get naming mode settings
+        try:
+            default_naming_mode = config["DEFAULT"]["default_naming_mode"]
+            current_naming_mode = config["DEFAULT"]["current_naming_mode"]
+            dynamic_naming_mode = config.getboolean("DEFAULT", "dynamic_naming_mode")
+        except (KeyError, ValueError):
+            default_naming_mode = "artist_discography_dg"
+            current_naming_mode = "artist_discography_dg"
+            dynamic_naming_mode = True
 
         secrets = [
             secret for secret in config["DEFAULT"]["secrets"].split(",") if secret
@@ -195,6 +213,9 @@ def main():
         folder_format=arguments.folder_format or folder_format,
         track_format=arguments.track_format or track_format,
         smart_discography=arguments.smart_discography or smart_discography,
+        default_naming_mode=default_naming_mode,
+        current_naming_mode=current_naming_mode,
+        dynamic_naming_mode=dynamic_naming_mode,
     )
     qobuz.initialize_client(email, password, app_id, secrets)
 
