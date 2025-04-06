@@ -125,6 +125,11 @@ class QobuzDL:
                 'query': album_data.get('query', '')
             }
             
+            # Special handling for label downloads
+            if search_mode == 'label_discography_lpk' and not variables['label'] and 'name' in album_data:
+                # For label root folders, use the name as the label
+                variables['label'] = album_data.get('name', '')
+            
             # Format the folder name
             folder_name = format_config['folder_format'].format(**variables)
             folder_path = os.path.join(self.directory, sanitize_filename(folder_name))
