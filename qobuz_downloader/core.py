@@ -4,6 +4,7 @@ import sys
 import time
 import random
 import configparser
+import inspect
 
 import requests
 from bs4 import BeautifulSoup as bso
@@ -41,6 +42,20 @@ QUALITIES = {
 }
 
 logger = logging.getLogger(__name__)
+
+# Check if core.py is being loaded from unexpected locations
+def _check_duplicate_core_files():
+    current_file = inspect.getfile(inspect.currentframe())
+    appdata_path = os.path.join(os.environ.get('APPDATA', ''), 'QDL', 'core.py') if os.name == 'nt' else \
+                  os.path.join(os.environ.get('HOME', ''), '.config', 'QDL', 'core.py')
+    
+    if os.path.exists(appdata_path) and os.path.normpath(current_file) != os.path.normpath(appdata_path):
+        logger.warning(f"{RED}WARNING: Duplicate core.py detected in {appdata_path}{RESET}")
+        logger.warning(f"{RED}This may cause unpredictable behavior - using version from: {current_file}{RESET}")
+        logger.warning(f"{RED}Consider removing the duplicate file to avoid conflicts{RESET}")
+
+# Run the check when this module is imported
+_check_duplicate_core_files()
 
 
 class QobuzDL:
@@ -86,15 +101,37 @@ class QobuzDL:
         
         # Read format configuration
         self.format_config = configparser.ConfigParser()
+        
+        # Detect if we're running in development mode (editable install)
+        # The editable install will have the core.py in a git repo path, not in site-packages
+        current_file = inspect.getfile(inspect.currentframe())
+        dev_mode = '_WINDSURF_AI_CODE' in current_file or '.git' in os.listdir(os.path.dirname(os.path.dirname(current_file))) if os.path.exists(os.path.dirname(os.path.dirname(current_file))) else False
+        
+        if dev_mode:
+            logger.info(f"{YELLOW}Running in development mode - prioritizing local configuration files{RESET}")
+        
         # Try to read from different possible locations
-        config_paths = [
-            'format_config.ini',  # Current directory
-            os.path.join(os.path.dirname(__file__), 'format_config.ini'),  # Module directory
-            os.path.join(os.environ.get('APPDATA', ''), 'QDL', 'format_config.ini') if os.name == 'nt' else 
-            os.path.join(os.environ.get('HOME', ''), '.config', 'QDL', 'format_config.ini')  # User config dir
-        ]
+        config_paths = []
+        
+        # In development mode, prioritize local files first
+        if dev_mode:
+            config_paths = [
+                'format_config.ini',  # Current directory
+                os.path.join(os.path.dirname(__file__), 'format_config.ini'),  # Module directory
+                os.path.join(os.environ.get('APPDATA', ''), 'QDL', 'format_config.ini') if os.name == 'nt' else 
+                os.path.join(os.environ.get('HOME', ''), '.config', 'QDL', 'format_config.ini')  # User config dir
+            ]
+        else:  # Standard mode - prefer user config dir first
+            config_paths = [
+                os.path.join(os.environ.get('APPDATA', ''), 'QDL', 'format_config.ini') if os.name == 'nt' else 
+                os.path.join(os.environ.get('HOME', ''), '.config', 'QDL', 'format_config.ini'),  # User config dir
+                os.path.join(os.path.dirname(__file__), 'format_config.ini'),  # Module directory 
+                'format_config.ini',  # Current directory
+            ]
+            
         for path in config_paths:
             if os.path.exists(path):
+                logger.info(f"{YELLOW}Using format configuration from: {path}{RESET}")
                 self.format_config.read(path)
                 break
 
