@@ -503,7 +503,7 @@ class QobuzDL:
                         final_url_list.append(label_url)
                         
                         # Show just one line about processing the URL
-                        logger.info(f"{WHITE}\nProcessing label URL: {label_url}{RESET}")
+                        logger.info(f"{WHITE}Processing label URL: {label_url}{RESET}")
                         try:
                             self.handle_url(label_url)
                             break
@@ -539,7 +539,7 @@ class QobuzDL:
             
             # Try each search query
             for search_query in search_queries:
-                logger.info(f"{YELLOW}Searching with query: {search_query}{RESET}")
+                logger.info(f"{WHITE}Searching with query: {search_query}{RESET}")
                 
                 try:
                     # Add pause and random delays to avoid rate limiting
