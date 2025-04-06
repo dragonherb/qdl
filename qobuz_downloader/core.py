@@ -444,8 +444,7 @@ class QobuzDL:
                 # Format options for display
                 options = []
                 for i, url_info in enumerate(label_urls):
-                    # Print the original URL for debugging
-                    logger.info(f"{YELLOW}Original URL: {url_info['url']}{RESET}")
+                    # Don't print original URLs for each result to reduce output verbosity
                     
                     # Extract just the essential parts for downloading
                     original_url = url_info['url']
@@ -463,12 +462,10 @@ class QobuzDL:
                         # If pattern was found, remove it
                         if pattern:
                             clean_url = original_url.replace(pattern, "")
-                            logger.info(f"{GREEN}Cleaned URL (removed hyphenated): {clean_url}{RESET}")
                     
                     # Also check for the space version
                     elif "Download Streaming Albums/" in original_url:
                         clean_url = original_url.replace("Download Streaming Albums/", "")
-                        logger.info(f"{GREEN}Cleaned URL (removed spaced): {clean_url}{RESET}")
                     
                     # Always use se-en region code for label URLs since that has been confirmed to work
                     if "/label/" in clean_url:
@@ -477,7 +474,6 @@ class QobuzDL:
                             if region in clean_url:
                                 # Replace with the working region code
                                 clean_url = clean_url.replace(region, "/se-en/")
-                                logger.info(f"{GREEN}Using se-en region: {clean_url}{RESET}")
                                 break
                     
                     # Show both original and cleaned URL in the menu for debugging
@@ -494,7 +490,7 @@ class QobuzDL:
                 
                 if options:
                     try:
-                        # Using the globally imported pick function
+                        # Using the globally imported pick function for interactive selection
                         selected = pick(
                             options, title, options_map_func=get_title_text
                         )
@@ -503,15 +499,11 @@ class QobuzDL:
                         label_url = selected[0]["url"]
                         original_url = selected[0]["original_url"]
                         
-                        # Debug log both URLs
-                        logger.info(f"{YELLOW}Selected original URL: {original_url}{RESET}")
-                        logger.info(f"{YELLOW}Selected cleaned URL for download: {label_url}{RESET}")
-                        
+                        # Add to the URL list and proceed directly to processing
                         final_url_list.append(label_url)
                         
-                        # Instead of trying to download the label directly, use the handle_url method
-                        # which already knows how to process label URLs properly
-                        logger.info(f"{YELLOW}Processing label URL: {label_url}{RESET}")
+                        # Show just one line about processing the URL
+                        logger.info(f"{YELLOW}\nProcessing label URL: {label_url}{RESET}")
                         try:
                             self.handle_url(label_url)
                             break
@@ -555,12 +547,12 @@ class QobuzDL:
                     
                     # Use googlesearch-python to find Qobuz URLs
                     for url in google_search(search_query, num_results=5, lang="en"):
-                        # Print original URL for debugging
-                        logger.info(f"{YELLOW}Found URL: {url}{RESET}")
+                        # Only print the first found URL for each search query, avoid flooding the output
+                        if len(search_results) == 0 and "/label/" in url:
+                            logger.info(f"{YELLOW}Found URL: {url}{RESET}")
                         
                         # Skip if we've already seen this URL
                         if url in seen_urls:
-                            logger.info(f"{YELLOW}Skipping duplicate URL: {url}{RESET}")
                             continue
                         
                         seen_urls.add(url)  # Add to seen URLs
@@ -613,8 +605,7 @@ class QobuzDL:
                 except Exception as e:
                     logger.info(f"{RED}Fallback search failed: {str(e)}{RESET}")
             
-            if search_results:
-                logger.info(f"{GREEN}Found {len(search_results)} potential matches{RESET}")
+            # Don't output the number of matches to simplify output
             return search_results
             
         except Exception as e:
