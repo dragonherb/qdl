@@ -125,18 +125,39 @@ class QobuzDL:
                 'query': album_data.get('query', '')
             }
             
-            # Special handling for top-level folders in collections
-            is_root_folder = False
-            if (search_mode == 'label_discography_lpk' or search_mode == 'artist_discography_dg') and not album_data.get('album'):
+            # Check for the explicit is_root_folder flag from handle_url
+            is_root_folder = album_data.get('is_root_folder', False)
+            
+            # Backup detection based on data structure and mode
+            if not is_root_folder and (search_mode == 'label_discography_lpk' or search_mode == 'artist_discography_dg') and not album_data.get('album'):
                 is_root_folder = True
             
-            # If root folder and top_folder_format exists in config, use it
-            if is_root_folder and 'top_folder_format' in format_config:
-                # Use the explicit top folder format
-                folder_name = format_config['top_folder_format'].format(**variables)
+            # For root folders in label or artist collections
+            if is_root_folder:
+                # First try to use the explicitly defined top_folder_format if available
+                if 'top_folder_format' in format_config:
+                    try:
+                        folder_name = format_config['top_folder_format'].format(**variables)
+                    except KeyError as e:
+                        logger.warning(f"Error formatting top folder: {e}. Using fallback format.")
+                        # Fallback based on search mode
+                        if search_mode == 'label' or search_mode == 'label_discography_lpk':
+                            folder_name = f"Label - {variables['label']}" if variables['label'] else album_data.get('name', 'Unknown Label')
+                        else:
+                            folder_name = variables['artist'] if variables['artist'] else album_data.get('name', 'Unknown Artist')
+                else:
+                    # No top_folder_format defined, use simple naming for root folders
+                    if search_mode == 'label' or search_mode == 'label_discography_lpk':
+                        folder_name = f"Label - {variables['label']}" if variables['label'] else album_data.get('name', 'Unknown Label')
+                    else:
+                        folder_name = variables['artist'] if variables['artist'] else album_data.get('name', 'Unknown Artist')
             else:
-                # Use the regular folder format
-                folder_name = format_config['folder_format'].format(**variables)
+                # Regular album folder - use the standard folder format
+                try:
+                    folder_name = format_config['folder_format'].format(**variables)
+                except KeyError as e:
+                    logger.warning(f"Error formatting folder: {e}. Using album name.")
+                    folder_name = album_data.get('album', album_data.get('name', 'Unknown'))
             
             folder_path = os.path.join(self.directory, sanitize_filename(folder_name))
             return create_and_return_dir(folder_path)
@@ -242,7 +263,25 @@ class QobuzDL:
                 f"{GREEN}Downloading all the music from {content_name} "
                 f"({url_type})!"
             )
-            new_path = self.format_folder_name(content[0], url_type)
+            
+            # Prepare the root folder data with proper naming values
+            root_folder_data = content[0].copy()
+            
+            # For label collections - ensure we have a proper label name
+            if url_type == "label":
+                # Add the label name to ensure it can be used in top_folder_format
+                root_folder_data["label"] = content_name
+                # Set special flag for root folders
+                root_folder_data["is_root_folder"] = True
+                
+            # For artist collections - ensure we have a proper artist name
+            elif url_type == "artist":
+                # Make sure artist name is available
+                root_folder_data["artist"] = content_name
+                # Set special flag for root folders
+                root_folder_data["is_root_folder"] = True
+            
+            new_path = self.format_folder_name(root_folder_data, url_type)
 
             if self.smart_discography and url_type == "artist":
                 items = smart_discography_filter(
