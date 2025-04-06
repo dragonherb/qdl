@@ -261,7 +261,15 @@ class QobuzDL:
             secret for secret in bundle.get_secrets().values() if secret
         ]  # avoid empty fields
 
-    def download_from_id(self, item_id, album=True, alt_path=None):
+    def download_from_id(self, item_data, album=True, alt_path=None):
+        # Handle both old-style item_id (string) and new-style item_meta (dict)
+        if isinstance(item_data, dict):
+            item_id = item_data.get("id")
+            parent_search_mode = item_data.get("parent_search_mode")
+        else:
+            item_id = item_data
+            parent_search_mode = None
+            
         if handle_download_id(self.downloads_db, item_id, add_id=False):
             logger.info(
                 f"{OFF}This release ID ({item_id}) was already downloaded "
@@ -270,6 +278,18 @@ class QobuzDL:
             )
             return
         try:
+            # If we have a parent search mode, get the proper folder format
+            # This ensures child albums get formatted with the parent collection's style
+            folder_format = self.folder_format
+            track_format = self.track_format
+            
+            if parent_search_mode:
+                naming_mode = self.get_naming_mode(parent_search_mode)
+                if naming_mode in self.format_config:
+                    format_config = self.format_config[naming_mode]
+                    folder_format = format_config.get('folder_format', self.folder_format)
+                    track_format = format_config.get('track_format', self.track_format)
+                    
             dloader = downloader.Download(
                 self.client,
                 item_id,
@@ -280,8 +300,8 @@ class QobuzDL:
                 self.quality_fallback,
                 self.cover_og_quality,
                 self.no_cover,
-                self.folder_format,
-                self.track_format,
+                folder_format,
+                track_format,
             )
             dloader.download_id_by_type(not album)
             handle_download_id(self.downloads_db, item_id, add_id=True)
@@ -361,8 +381,14 @@ class QobuzDL:
 
             logger.info(f"{GREEN}{len(items)} downloads in queue")
             for item in items:
+                # Pass the parent search mode to ensure child folders use the correct format
+                # Create a dictionary to store the search mode for download_from_id
+                item_meta = {
+                    "id": item["id"],
+                    "parent_search_mode": url_type
+                }
                 self.download_from_id(
-                    item["id"],
+                    item_meta,
                     True if type_dict["iterable_key"] == "albums" else False,
                     new_path,
                 )
