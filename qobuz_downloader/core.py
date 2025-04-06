@@ -107,38 +107,35 @@ class QobuzDL:
     def format_folder_name(self, album_data, search_mode):
         """Format the folder name based on the naming mode"""
         try:
+            naming_mode = self.get_naming_mode(search_mode)
+            # Ensure the naming mode exists in the config
+            if naming_mode not in self.format_config:
+                naming_mode = self.default_naming_mode
+                
+            format_config = self.format_config[naming_mode]
+            
+            # Prepare variables for folder format
+            variables = {
+                'artist': album_data.get('artist', ''),
+                'year': album_data.get('year', ''),
+                'album': album_data.get('album', ''),
+                'bit_depth': album_data.get('bit_depth', ''),
+                'sampling_rate': album_data.get('sampling_rate', ''),
+                'label': album_data.get('label', '') or album_data.get('name', ''),
+                'query': album_data.get('query', '')
+            }
+            
             # Special handling for top-level folders in collections
             is_root_folder = False
-            if search_mode == 'label_discography_lpk' and 'name' in album_data and not album_data.get('album'):
-                # Root folder for label collection
-                folder_name = album_data.get('name', 'Unknown Label')
-                is_root_folder = True
-            elif search_mode == 'artist_discography_dg' and 'artist' in album_data and not album_data.get('album'):
-                # Root folder for artist discography
-                folder_name = album_data.get('artist', 'Unknown Artist')
+            if (search_mode == 'label_discography_lpk' or search_mode == 'artist_discography_dg') and not album_data.get('album'):
                 is_root_folder = True
             
-            # If not a root folder, use the naming mode format
-            if not is_root_folder:
-                naming_mode = self.get_naming_mode(search_mode)
-                # Ensure the naming mode exists in the config
-                if naming_mode not in self.format_config:
-                    naming_mode = self.default_naming_mode
-                    
-                format_config = self.format_config[naming_mode]
-                
-                # Prepare variables for folder format
-                variables = {
-                    'artist': album_data.get('artist', ''),
-                    'year': album_data.get('year', ''),
-                    'album': album_data.get('album', ''),
-                    'bit_depth': album_data.get('bit_depth', ''),
-                    'sampling_rate': album_data.get('sampling_rate', ''),
-                    'label': album_data.get('label', ''),
-                    'query': album_data.get('query', '')
-                }
-                
-                # Format the folder name using the template
+            # If root folder and top_folder_format exists in config, use it
+            if is_root_folder and 'top_folder_format' in format_config:
+                # Use the explicit top folder format
+                folder_name = format_config['top_folder_format'].format(**variables)
+            else:
+                # Use the regular folder format
                 folder_name = format_config['folder_format'].format(**variables)
             
             folder_path = os.path.join(self.directory, sanitize_filename(folder_name))
