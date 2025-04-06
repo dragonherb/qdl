@@ -80,7 +80,7 @@ class QobuzDL:
 
     def initialize_client(self, email, pwd, app_id, secrets):
         self.client = qopy.Client(email, pwd, app_id, secrets)
-        logger.info(f"{YELLOW}Set max quality: {QUALITIES[int(self.quality)]}\n")
+        logger.info(f"{WHITE}Set max quality: {QUALITIES[int(self.quality)]}\n")
 
     def get_tokens(self):
         bundle = Bundle()
@@ -145,7 +145,7 @@ class QobuzDL:
             content = [item for item in type_dict["func"](item_id)]
             content_name = content[0]["name"]
             logger.info(
-                f"{YELLOW}Downloading all the music from {content_name} "
+                f"{GREEN}Downloading all the music from {content_name} "
                 f"({url_type})!"
             )
             new_path = create_and_return_dir(
@@ -164,7 +164,7 @@ class QobuzDL:
                     0
                 ]
 
-            logger.info(f"{YELLOW}{len(items)} downloads in queue")
+            logger.info(f"{GREEN}{len(items)} downloads in queue")
             for item in items:
                 self.download_from_id(
                     item["id"],
@@ -432,7 +432,7 @@ class QobuzDL:
                 query = input(
                     f"{CYAN}Enter label name to search: [Ctrl + c to quit]\n" f"-{DF} "
                 )
-                logger.info(f"{YELLOW}Searching for label: {query} on Google...{RESET}")
+                logger.info(f"{WHITE}Searching for label: {query} on Google...{RESET}")
                 
                 # Perform Google search for Qobuz label using googlesearch-python
                 label_urls = self.search_label_on_google(query)
@@ -503,7 +503,7 @@ class QobuzDL:
                         final_url_list.append(label_url)
                         
                         # Show just one line about processing the URL
-                        logger.info(f"{YELLOW}\nProcessing label URL: {label_url}{RESET}")
+                        logger.info(f"{WHITE}\nProcessing label URL: {label_url}{RESET}")
                         try:
                             self.handle_url(label_url)
                             break
@@ -549,7 +549,7 @@ class QobuzDL:
                     for url in google_search(search_query, num_results=5, lang="en"):
                         # Only print the first found URL for each search query, avoid flooding the output
                         if len(search_results) == 0 and "/label/" in url:
-                            logger.info(f"{YELLOW}Found URL: {url}{RESET}")
+                            logger.info(f"{WHITE}Found URL: {url}{RESET}")
                         
                         # Skip if we've already seen this URL
                         if url in seen_urls:

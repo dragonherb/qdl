@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streamlined label search output with a minimalistic presentation
 - Removed redundant debugging messages for a cleaner user experience
 - Maintained interactive label selection menu for better user control
+- Enhanced console output with improved color formatting:
+  - Status information appears in white (search status, found URLs, processing messages)
+  - Success and download information appears in green (download confirmation, queue counts)
 
 ## [0.11] - 2025-04-05
 
