@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Status information appears in white (search status, found URLs, processing messages)
   - Success and download information appears in green (download confirmation, queue counts)
 
+### Added
+- New folder and track naming system based on search mode
+- Dynamic naming mode configuration
+- Multiple naming modes including artist_discography_dg, album, artist, label, and search
+- Customizable folder and track name formats through config files
+
 ## [0.11.1] - 2025-04-06
 
 ### Changed

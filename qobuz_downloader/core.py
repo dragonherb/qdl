@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import random
+import configparser
 
 import requests
 from bs4 import BeautifulSoup as bso
@@ -57,10 +58,12 @@ class QobuzDL:
         cover_og_quality=False,
         no_cover=False,
         downloads_db=None,
-        folder_format="{artist} - {album} ({year}) [{bit_depth}B-"
-        "{sampling_rate}kHz]",
-        track_format="{tracknumber}. {tracktitle}",
+        folder_format="{artist} - {album} ({year}) [{bit_depth}B-{sampling_rate}kHz]",
+        track_format="{tracknumber}. {artist} - {tracktitle}",
         smart_discography=False,
+        default_naming_mode="artist_discography_dg",
+        current_naming_mode="artist_discography_dg",
+        dynamic_naming_mode=True,
     ):
         self.directory = create_and_return_dir(directory)
         self.quality = quality
@@ -77,6 +80,52 @@ class QobuzDL:
         self.folder_format = folder_format
         self.track_format = track_format
         self.smart_discography = smart_discography
+        self.default_naming_mode = default_naming_mode
+        self.current_naming_mode = current_naming_mode
+        self.dynamic_naming_mode = dynamic_naming_mode
+        
+        # Read format configuration
+        self.format_config = configparser.ConfigParser()
+        self.format_config.read('format_config.ini')
+
+    def get_naming_mode(self, search_mode):
+        """Get the naming mode based on search mode and configuration"""
+        if self.dynamic_naming_mode:
+            return search_mode
+        return self.current_naming_mode
+
+    def format_folder_name(self, album_data, search_mode):
+        """Format the folder name based on the naming mode"""
+        naming_mode = self.get_naming_mode(search_mode)
+        format_config = self.format_config[naming_mode]
+        
+        # Prepare variables for folder format
+        variables = {
+            'artist': album_data.get('artist', ''),
+            'year': album_data.get('year', ''),
+            'album': album_data.get('album', ''),
+            'bit_depth': album_data.get('bit_depth', ''),
+            'sampling_rate': album_data.get('sampling_rate', '')
+        }
+        
+        # Format the folder name
+        folder_name = format_config['folder_format'].format(**variables)
+        return os.path.join(self.directory, folder_name)
+
+    def format_track_name(self, track_data, album_data, search_mode):
+        """Format the track name based on the naming mode"""
+        naming_mode = self.get_naming_mode(search_mode)
+        format_config = self.format_config[naming_mode]
+        
+        # Prepare variables for track format
+        variables = {
+            'track_number': str(track_data.get('track_number', '')),
+            'track_title': track_data.get('title', ''),
+            'artist': album_data.get('artist', '')
+        }
+        
+        # Format the track name
+        return format_config['track_format'].format(**variables)
 
     def initialize_client(self, email, pwd, app_id, secrets):
         self.client = qopy.Client(email, pwd, app_id, secrets)
@@ -148,12 +197,9 @@ class QobuzDL:
                 f"{GREEN}Downloading all the music from {content_name} "
                 f"({url_type})!"
             )
-            new_path = create_and_return_dir(
-                os.path.join(self.directory, sanitize_filename(content_name))
-            )
+            new_path = self.format_folder_name(content[0], url_type)
 
             if self.smart_discography and url_type == "artist":
-                # change `save_space` and `skip_extras` for customization
                 items = smart_discography_filter(
                     content,
                     save_space=True,
