@@ -5,20 +5,24 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.12] - 2025-04-06
+## [0.12.0] - 2025-04-06
 
 ### Changed
 - Streamlined label search output with a minimalistic presentation
 - Removed redundant debugging messages for a cleaner user experience
-- Maintained interactive label selection menu for better user control
+- Reordered search menu options to a more logical flow: Artists, Albums, Tracks, Playlists, Label search
 - Enhanced console output with improved color formatting:
   - Status information appears in white (search status, found URLs, processing messages)
   - Success and download information appears in green (download confirmation, queue counts)
 
 ### Added
 - New folder and track naming system based on search mode
-- Dynamic naming mode configuration
-- Multiple naming modes including artist_discography_dg, album, artist, label, and search
+- Top-level folder creation control with `create_top_folder` setting in format_config.ini
+- Explicit `top_folder_format` parameter for controlling root folder naming
+- Search mode aliases in DEFAULT section for mapping UI modes to format configurations
+- Support for playlist folders with proper naming using the {playlist} tag
+- Support for label collections with proper naming using the {label} tag
+- Multiple naming modes including artist_discography_dg, album, artist, label, and playlist
 - Customizable folder and track name formats through config files
 
 ## [0.11.1] - 2025-04-06
