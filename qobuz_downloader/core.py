@@ -534,7 +534,7 @@ class QobuzDL:
             return option.get("text")
 
         try:
-            item_types = ["Albums", "Tracks", "Artists", "Playlists", "Label search (Google)"]
+            item_types = ["Artists", "Albums", "Tracks", "Playlists", "Label search (Google)"]
             selected_type = pick(
                 item_types, "I'll search for:\n[press Intro]")[0][
                 :-1
