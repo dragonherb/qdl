@@ -17,7 +17,7 @@ except (ImportError, ModuleNotFoundError):
 
 from qobuz_downloader.bundle import Bundle
 from qobuz_downloader import downloader, qopy
-from qobuz_downloader.color import CYAN, OFF, RED, YELLOW, DF, RESET, GREEN
+from qobuz_downloader.color import CYAN, OFF, RED, YELLOW, DF, RESET, GREEN, WHITE
 from qobuz_downloader.exceptions import NonStreamable
 from qobuz_downloader.db import create_db, handle_download_id
 from qobuz_downloader.utils import (
