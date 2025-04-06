@@ -86,7 +86,17 @@ class QobuzDL:
         
         # Read format configuration
         self.format_config = configparser.ConfigParser()
-        self.format_config.read('format_config.ini')
+        # Try to read from different possible locations
+        config_paths = [
+            'format_config.ini',  # Current directory
+            os.path.join(os.path.dirname(__file__), 'format_config.ini'),  # Module directory
+            os.path.join(os.environ.get('APPDATA', ''), 'QDL', 'format_config.ini') if os.name == 'nt' else 
+            os.path.join(os.environ.get('HOME', ''), '.config', 'QDL', 'format_config.ini')  # User config dir
+        ]
+        for path in config_paths:
+            if os.path.exists(path):
+                self.format_config.read(path)
+                break
 
     def get_naming_mode(self, search_mode):
         """Get the naming mode based on search mode and configuration"""
@@ -96,36 +106,60 @@ class QobuzDL:
 
     def format_folder_name(self, album_data, search_mode):
         """Format the folder name based on the naming mode"""
-        naming_mode = self.get_naming_mode(search_mode)
-        format_config = self.format_config[naming_mode]
-        
-        # Prepare variables for folder format
-        variables = {
-            'artist': album_data.get('artist', ''),
-            'year': album_data.get('year', ''),
-            'album': album_data.get('album', ''),
-            'bit_depth': album_data.get('bit_depth', ''),
-            'sampling_rate': album_data.get('sampling_rate', '')
-        }
-        
-        # Format the folder name
-        folder_name = format_config['folder_format'].format(**variables)
-        return os.path.join(self.directory, folder_name)
+        try:
+            naming_mode = self.get_naming_mode(search_mode)
+            # Ensure the naming mode exists in the config
+            if naming_mode not in self.format_config:
+                naming_mode = self.default_naming_mode
+                
+            format_config = self.format_config[naming_mode]
+            
+            # Prepare variables for folder format
+            variables = {
+                'artist': album_data.get('artist', ''),
+                'year': album_data.get('year', ''),
+                'album': album_data.get('album', ''),
+                'bit_depth': album_data.get('bit_depth', ''),
+                'sampling_rate': album_data.get('sampling_rate', ''),
+                'label': album_data.get('label', ''),
+                'query': album_data.get('query', '')
+            }
+            
+            # Format the folder name
+            folder_name = format_config['folder_format'].format(**variables)
+            folder_path = os.path.join(self.directory, sanitize_filename(folder_name))
+            return create_and_return_dir(folder_path)
+        except (KeyError, configparser.Error) as e:
+            logger.warning(f"Error in format_folder_name: {e}. Using default folder format.")
+            # Fallback to default format
+            folder_name = sanitize_filename(album_data.get('name', 'Unknown'))
+            return create_and_return_dir(os.path.join(self.directory, folder_name))
 
     def format_track_name(self, track_data, album_data, search_mode):
         """Format the track name based on the naming mode"""
-        naming_mode = self.get_naming_mode(search_mode)
-        format_config = self.format_config[naming_mode]
-        
-        # Prepare variables for track format
-        variables = {
-            'track_number': str(track_data.get('track_number', '')),
-            'track_title': track_data.get('title', ''),
-            'artist': album_data.get('artist', '')
-        }
-        
-        # Format the track name
-        return format_config['track_format'].format(**variables)
+        try:
+            naming_mode = self.get_naming_mode(search_mode)
+            # Ensure the naming mode exists in the config
+            if naming_mode not in self.format_config:
+                naming_mode = self.default_naming_mode
+                
+            format_config = self.format_config[naming_mode]
+            
+            # Prepare variables for track format
+            variables = {
+                'tracknumber': str(track_data.get('track_number', '')),
+                'tracktitle': track_data.get('title', ''),
+                'artist': album_data.get('artist', ''),
+                'track_number': str(track_data.get('track_number', '')),  # Alternate name
+                'track_title': track_data.get('title', '')  # Alternate name
+            }
+            
+            # Format the track name
+            return format_config['track_format'].format(**variables)
+        except (KeyError, configparser.Error) as e:
+            logger.warning(f"Error in format_track_name: {e}. Using default track format.")
+            # Fallback to default format
+            return f"{track_data.get('track_number', '')}. {track_data.get('title', 'Unknown')}"
 
     def initialize_client(self, email, pwd, app_id, secrets):
         self.client = qopy.Client(email, pwd, app_id, secrets)
