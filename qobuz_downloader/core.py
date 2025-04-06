@@ -131,9 +131,19 @@ class QobuzDL:
             # Backup detection based on data structure and mode
             if not is_root_folder and (search_mode == 'label_discography_lpk' or search_mode == 'artist_discography_dg') and not album_data.get('album'):
                 is_root_folder = True
+                
+            # Check if we should create a top folder for this mode
+            create_top_folder = False
+            try:
+                # Default to False if not specified
+                create_top_folder = format_config.getboolean('create_top_folder', False)
+            except (configparser.Error, ValueError):
+                # If there's an error parsing, default to mode-specific behavior
+                if search_mode == 'label' or search_mode == 'label_discography_lpk' or search_mode == 'artist' or search_mode == 'artist_discography_dg':
+                    create_top_folder = True
             
-            # For root folders in label or artist collections
-            if is_root_folder:
+            # For root folders in label or artist collections, but only if create_top_folder is True
+            if is_root_folder and create_top_folder:
                 # First try to use the explicitly defined top_folder_format if available
                 if 'top_folder_format' in format_config:
                     try:
@@ -151,6 +161,11 @@ class QobuzDL:
                         folder_name = f"Label - {variables['label']}" if variables['label'] else album_data.get('name', 'Unknown Label')
                     else:
                         folder_name = variables['artist'] if variables['artist'] else album_data.get('name', 'Unknown Artist')
+            elif is_root_folder and not create_top_folder:
+                # If it's a root folder but we shouldn't create a top folder,
+                # just return the base directory
+                logger.info(f"Not creating top folder for {search_mode} as specified in configuration.")
+                return self.directory
             else:
                 # Regular album folder - use the standard folder format
                 try:
