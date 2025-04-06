@@ -163,6 +163,7 @@ class QobuzDL:
                 'bit_depth': album_data.get('bit_depth', ''),
                 'sampling_rate': album_data.get('sampling_rate', ''),
                 'label': album_data.get('label', '') or album_data.get('name', ''),
+                'playlist': album_data.get('playlist', '') or album_data.get('name', ''),
                 'query': album_data.get('query', '')
             }
             
@@ -334,6 +335,14 @@ class QobuzDL:
             elif url_type == "artist":
                 # Make sure artist name is available
                 root_folder_data["artist"] = content_name
+                # Set special flag for root folders
+                root_folder_data["is_root_folder"] = True
+                
+            # For playlist collections - ensure we have proper playlist name
+            elif url_type == "playlist":
+                # Make sure artist (creator) is available
+                root_folder_data["artist"] = content_name
+                root_folder_data["playlist"] = content_name
                 # Set special flag for root folders
                 root_folder_data["is_root_folder"] = True
             
