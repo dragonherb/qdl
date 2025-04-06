@@ -100,19 +100,25 @@ class QobuzDL:
 
     def get_naming_mode(self, search_mode):
         """Get the naming mode based on search mode and configuration"""
+        logger.info(f"{YELLOW}DEBUG: get_naming_mode called with search_mode='{search_mode}'{RESET}")
+        
         if self.dynamic_naming_mode:
             # Check if we have a search mode alias defined
             try:
                 # Look for an alias section in format_config.ini
                 alias_key = f"{search_mode}_search_mode"
+                logger.info(f"{YELLOW}DEBUG: Looking for alias_key='{alias_key}' in DEFAULT section{RESET}")
                 
                 # First check if the exact search_mode has a mapping
                 if search_mode in self.format_config:
+                    logger.info(f"{YELLOW}DEBUG: Found exact section match for '{search_mode}'{RESET}")
                     return search_mode
                     
                 # Check if there's a direct search_mode alias
                 if alias_key in self.format_config['DEFAULT']:
-                    return self.format_config['DEFAULT'][alias_key]
+                    result = self.format_config['DEFAULT'][alias_key]
+                    logger.info(f"{YELLOW}DEBUG: Found direct alias '{alias_key}' -> '{result}'{RESET}")
+                    return result
                     
                 # Try to match by searching through all keys in format_config.ini
                 for section in self.format_config.sections():
@@ -123,6 +129,7 @@ class QobuzDL:
                     # Check if any key contains our search mode as value
                     for key, value in self.format_config.items(section):
                         if key.endswith('_search_mode') and search_mode.lower() in key.lower():
+                            logger.info(f"{YELLOW}DEBUG: Found partial alias match: '{key}' -> '{value}'{RESET}")
                             return value
                             
                 # Check standard URL type mappings as fallback
@@ -135,25 +142,36 @@ class QobuzDL:
                 }
                 
                 if search_mode in mode_mappings:
-                    return mode_mappings[search_mode]
+                    result = mode_mappings[search_mode]
+                    logger.info(f"{YELLOW}DEBUG: Using fallback mapping: '{search_mode}' -> '{result}'{RESET}")
+                    return result
             except (KeyError, configparser.Error) as e:
-                logger.debug(f"Error mapping search mode alias: {e}. Using search_mode directly.")
+                logger.info(f"{YELLOW}DEBUG: Error mapping search mode alias: {e}. Using search_mode directly.{RESET}")
             
             # If all else fails, just use the search_mode directly
+            logger.info(f"{YELLOW}DEBUG: No mapping found, using search_mode='{search_mode}' directly{RESET}")
             return search_mode
         
         # When dynamic naming is disabled, just use the current_naming_mode
+        logger.info(f"{YELLOW}DEBUG: Dynamic naming disabled, using current_naming_mode='{self.current_naming_mode}'{RESET}")
         return self.current_naming_mode
 
     def format_folder_name(self, album_data, search_mode):
         """Format the folder name based on the naming mode"""
         try:
+            logger.info(f"{YELLOW}DEBUG: format_folder_name called with search_mode='{search_mode}'{RESET}")
+            logger.info(f"{YELLOW}DEBUG: album_data: {album_data}{RESET}")
+            
             naming_mode = self.get_naming_mode(search_mode)
+            logger.info(f"{YELLOW}DEBUG: Resolved naming_mode='{naming_mode}'{RESET}")
+            
             # Ensure the naming mode exists in the config
             if naming_mode not in self.format_config:
+                logger.info(f"{YELLOW}DEBUG: Naming mode '{naming_mode}' not found in config, using default_naming_mode='{self.default_naming_mode}'{RESET}")
                 naming_mode = self.default_naming_mode
                 
             format_config = self.format_config[naming_mode]
+            logger.info(f"{YELLOW}DEBUG: Using format config section: '{naming_mode}'{RESET}")
             
             # Prepare variables for folder format
             variables = {
@@ -166,63 +184,92 @@ class QobuzDL:
                 'playlist': album_data.get('playlist', '') or album_data.get('name', ''),
                 'query': album_data.get('query', '')
             }
+            logger.info(f"{YELLOW}DEBUG: Format variables prepared: {variables}{RESET}")
             
             # Check for the explicit is_root_folder flag from handle_url
             is_root_folder = album_data.get('is_root_folder', False)
+            logger.info(f"{YELLOW}DEBUG: Initial is_root_folder flag: {is_root_folder}{RESET}")
             
             # Backup detection based on data structure and mode
             if not is_root_folder and (search_mode == 'label_discography_lpk' or search_mode == 'artist_discography_dg') and not album_data.get('album'):
                 is_root_folder = True
+                logger.info(f"{YELLOW}DEBUG: Backup detection activated! is_root_folder set to True{RESET}")
                 
             # Check if we should create a top folder for this mode
             create_top_folder = False
             try:
                 # Default to False if not specified
                 create_top_folder = format_config.getboolean('create_top_folder', False)
-            except (configparser.Error, ValueError):
+                logger.info(f"{YELLOW}DEBUG: create_top_folder from config: {create_top_folder}{RESET}")
+            except (configparser.Error, ValueError) as e:
+                logger.info(f"{YELLOW}DEBUG: Error getting create_top_folder setting: {e}{RESET}")
                 # If there's an error parsing, default to mode-specific behavior
                 if search_mode == 'label' or search_mode == 'label_discography_lpk' or search_mode == 'artist' or search_mode == 'artist_discography_dg':
                     create_top_folder = True
+                    logger.info(f"{YELLOW}DEBUG: Defaulting to create_top_folder=True for {search_mode}{RESET}")
             
             # For root folders in label or artist collections, but only if create_top_folder is True
             if is_root_folder and create_top_folder:
+                logger.info(f"{YELLOW}DEBUG: Processing as a top-level folder (is_root_folder=True, create_top_folder=True){RESET}")
                 # First try to use the explicitly defined top_folder_format if available
                 if 'top_folder_format' in format_config:
+                    logger.info(f"{YELLOW}DEBUG: Using top_folder_format: '{format_config['top_folder_format']}'{RESET}")
                     try:
                         folder_name = format_config['top_folder_format'].format(**variables)
+                        logger.info(f"{YELLOW}DEBUG: Generated top folder name: '{folder_name}'{RESET}")
                     except KeyError as e:
                         logger.warning(f"Error formatting top folder: {e}. Using fallback format.")
+                        logger.info(f"{YELLOW}DEBUG: KeyError in top_folder_format: {e}, using fallback{RESET}")
                         # Fallback based on search mode
                         if search_mode == 'label' or search_mode == 'label_discography_lpk':
                             folder_name = f"Label - {variables['label']}" if variables['label'] else album_data.get('name', 'Unknown Label')
+                            logger.info(f"{YELLOW}DEBUG: Fallback label folder name: '{folder_name}'{RESET}")
                         else:
                             folder_name = variables['artist'] if variables['artist'] else album_data.get('name', 'Unknown Artist')
+                            logger.info(f"{YELLOW}DEBUG: Fallback artist folder name: '{folder_name}'{RESET}")
                 else:
+                    logger.info(f"{YELLOW}DEBUG: No top_folder_format defined, using default for content type{RESET}")
                     # No top_folder_format defined, use simple naming for root folders
                     if search_mode == 'label' or search_mode == 'label_discography_lpk':
                         folder_name = f"Label - {variables['label']}" if variables['label'] else album_data.get('name', 'Unknown Label')
+                        logger.info(f"{YELLOW}DEBUG: Default label folder name: '{folder_name}'{RESET}")
                     else:
                         folder_name = variables['artist'] if variables['artist'] else album_data.get('name', 'Unknown Artist')
+                        logger.info(f"{YELLOW}DEBUG: Default artist folder name: '{folder_name}'{RESET}")
             elif is_root_folder and not create_top_folder:
                 # If it's a root folder but we shouldn't create a top folder,
                 # just return the base directory
+                logger.info(f"{YELLOW}DEBUG: Not creating top folder for {search_mode} (is_root_folder=True, create_top_folder=False){RESET}")
                 logger.info(f"Not creating top folder for {search_mode} as specified in configuration.")
                 return self.directory
             else:
                 # Regular album folder - use the standard folder format
+                logger.info(f"{YELLOW}DEBUG: Processing as regular album folder (not a root folder){RESET}")
                 try:
+                    logger.info(f"{YELLOW}DEBUG: Using folder_format: '{format_config['folder_format']}'{RESET}")
                     folder_name = format_config['folder_format'].format(**variables)
+                    logger.info(f"{YELLOW}DEBUG: Generated album folder name: '{folder_name}'{RESET}")
                 except KeyError as e:
+                    logger.info(f"{YELLOW}DEBUG: KeyError formatting album folder: {e}{RESET}")
                     logger.warning(f"Error formatting folder: {e}. Using album name.")
                     folder_name = album_data.get('album', album_data.get('name', 'Unknown'))
             
-            folder_path = os.path.join(self.directory, sanitize_filename(folder_name))
+            original_folder_name = folder_name
+            sanitized_folder_name = sanitize_filename(folder_name)
+            if original_folder_name != sanitized_folder_name:
+                logger.info(f"{YELLOW}DEBUG: Sanitized folder name from '{original_folder_name}' to '{sanitized_folder_name}'{RESET}")
+                
+            folder_path = os.path.join(self.directory, sanitized_folder_name)
+            logger.info(f"{YELLOW}DEBUG: Final folder path: '{folder_path}'{RESET}")
             return create_and_return_dir(folder_path)
         except (KeyError, configparser.Error) as e:
             logger.warning(f"Error in format_folder_name: {e}. Using default folder format.")
+            logger.info(f"{YELLOW}DEBUG: Error fallback triggered in format_folder_name: {e}{RESET}")
             # Fallback to default format
             folder_name = sanitize_filename(album_data.get('name', 'Unknown'))
-            return create_and_return_dir(os.path.join(self.directory, folder_name))
+            fallback_path = os.path.join(self.directory, folder_name)
+            logger.info(f"{YELLOW}DEBUG: Fallback folder path: '{fallback_path}'{RESET}")
+            return create_and_return_dir(fallback_path)
 
     def format_track_name(self, track_data, album_data, search_mode):
         """Format the track name based on the naming mode"""
@@ -306,7 +353,9 @@ class QobuzDL:
             "track": {"album": False, "func": None, "iterable_key": None},
         }
         try:
+            logger.info(f"{YELLOW}DEBUG: handle_url called with URL: '{url}'{RESET}")
             url_type, item_id = get_url_info(url)
+            logger.info(f"{YELLOW}DEBUG: URL parsed as type='{url_type}', id='{item_id}'{RESET}")
             type_dict = possibles[url_type]
         except (KeyError, IndexError):
             logger.info(
@@ -314,39 +363,53 @@ class QobuzDL:
             )
             return
         if type_dict["func"]:
+            logger.info(f"{YELLOW}DEBUG: Getting content data for {url_type} with ID {item_id}{RESET}")
             content = [item for item in type_dict["func"](item_id)]
             content_name = content[0]["name"]
             logger.info(
                 f"{GREEN}Downloading all the music from {content_name} "
                 f"({url_type})!"
             )
+            logger.info(f"{YELLOW}DEBUG: Content name: '{content_name}'{RESET}")
             
             # Prepare the root folder data with proper naming values
             root_folder_data = content[0].copy()
+            logger.info(f"{YELLOW}DEBUG: Preparing root folder data with keys: {list(root_folder_data.keys())}{RESET}")
             
             # For label collections - ensure we have a proper label name
             if url_type == "label":
+                logger.info(f"{YELLOW}DEBUG: Processing as label collection{RESET}")
                 # Add the label name to ensure it can be used in top_folder_format
                 root_folder_data["label"] = content_name
+                logger.info(f"{YELLOW}DEBUG: Set label name: '{content_name}'{RESET}")
                 # Set special flag for root folders
                 root_folder_data["is_root_folder"] = True
+                logger.info(f"{YELLOW}DEBUG: Set is_root_folder=True for label{RESET}")
                 
             # For artist collections - ensure we have a proper artist name
             elif url_type == "artist":
+                logger.info(f"{YELLOW}DEBUG: Processing as artist collection{RESET}")
                 # Make sure artist name is available
                 root_folder_data["artist"] = content_name
+                logger.info(f"{YELLOW}DEBUG: Set artist name: '{content_name}'{RESET}")
                 # Set special flag for root folders
                 root_folder_data["is_root_folder"] = True
+                logger.info(f"{YELLOW}DEBUG: Set is_root_folder=True for artist{RESET}")
                 
             # For playlist collections - ensure we have proper playlist name
             elif url_type == "playlist":
+                logger.info(f"{YELLOW}DEBUG: Processing as playlist collection{RESET}")
                 # Make sure artist (creator) is available
                 root_folder_data["artist"] = content_name
                 root_folder_data["playlist"] = content_name
+                logger.info(f"{YELLOW}DEBUG: Set playlist name: '{content_name}'{RESET}")
                 # Set special flag for root folders
                 root_folder_data["is_root_folder"] = True
+                logger.info(f"{YELLOW}DEBUG: Set is_root_folder=True for playlist{RESET}")
             
+            logger.info(f"{YELLOW}DEBUG: Calling format_folder_name with url_type='{url_type}'{RESET}")
             new_path = self.format_folder_name(root_folder_data, url_type)
+            logger.info(f"{YELLOW}DEBUG: New path created: '{new_path}'{RESET}")
 
             if self.smart_discography and url_type == "artist":
                 items = smart_discography_filter(
