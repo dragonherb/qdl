@@ -5,6 +5,16 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12] - 2025-04-06
+
+### Changed
+- Streamlined label search output with a minimalistic presentation
+- Removed redundant debugging messages for a cleaner user experience
+- Maintained interactive label selection menu for better user control
+- Enhanced console output with improved color formatting:
+  - Status information appears in white (search status, found URLs, processing messages)
+  - Success and download information appears in green (download confirmation, queue counts)
+
 ## [0.11.1] - 2025-04-06
 
 ### Changed
