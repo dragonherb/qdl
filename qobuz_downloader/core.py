@@ -610,12 +610,12 @@ class QobuzDL:
                 if len(selected_items) > 0:
                     [final_url_list.append(i[0]["url"]) for i in selected_items]
                     y_n = pick(
-                        ["Yes", "No"],
+                        ["Yes, start the download", "No, continue searching"],
                         "Items were added to queue to be downloaded. "
-                        "Keep searching?",
-                        default_index=1
+                        "Proceed to download?",
+                        default_index=0
                     )
-                    if y_n[0][0] == "N":
+                    if y_n[0][0] == "Y":
                         break
                 else:
                     logger.info(f"{YELLOW}Ok, try again...{RESET}")
