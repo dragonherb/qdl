@@ -613,6 +613,7 @@ class QobuzDL:
                         ["Yes", "No"],
                         "Items were added to queue to be downloaded. "
                         "Keep searching?",
+                        default_index=1
                     )
                     if y_n[0][0] == "N":
                         break
