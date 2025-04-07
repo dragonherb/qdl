@@ -5,6 +5,15 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] - 2025-04-07
+
+### Changed
+- Improved user experience in the "fun" mode by redesigning the queue dialog:
+  - Changed prompt from "Keep searching?" to "Proceed to download?"
+  - Updated options to "Yes, start the download" and "No, continue searching" for clearer user intent
+  - Made "Yes, start the download" the default option for faster workflow
+  - Inverted the logic flow to align text with actions for better usability
+
 ## [0.12.0] - 2025-04-06
 
 ### Changed
