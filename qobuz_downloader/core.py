@@ -572,10 +572,59 @@ class QobuzDL:
 
         try:
             item_types = ["Artists", "Albums", "Tracks", "Playlists", "Label search (Google)"]
-            selected_type = pick(
-                item_types, "I'll search for:\n[press Intro]")[0][
-                :-1
-            ].lower()
+            
+            # Create custom picker for the first menu with consistent styling
+            import curses
+            from pick import Picker
+            
+            # Custom render function for the initial menu selection
+            def custom_menu_render(screen, options, selected_option_index, title):
+                try:
+                    # Setup colors
+                    curses.start_color()
+                    curses.use_default_colors()
+                    curses.init_pair(1, 2, -1)  # Green text (2) on default background (-1)
+                    curses.init_pair(2, 3, -1)  # Yellow text (3) on default background (-1)
+                    
+                    GREEN = curses.color_pair(1)
+                    YELLOW = curses.color_pair(2)
+                    
+                    # Clear screen
+                    screen.clear()
+                    
+                    # Draw title
+                    screen.addstr(0, 0, title)
+                    screen.addstr(title.count('\n') + 1, 0, "")
+                    
+                    # Draw options
+                    for i, option in enumerate(options):
+                        line_position = title.count('\n') + 2 + i
+                        
+                        # Add prefix based on whether this is the selected option
+                        if i == selected_option_index:
+                            # Draw yellow asterisk and green text for selected option
+                            screen.addstr(line_position, 0, " ")
+                            screen.addstr("*", YELLOW)
+                            screen.addstr(" ")
+                            screen.addstr(option, GREEN)
+                        else:
+                            screen.addstr(line_position, 0, "  " + option)
+                    
+                    screen.refresh()
+                
+                except Exception as e:
+                    # In case of any error, fall back to normal pick
+                    pass
+            
+            # Create custom picker for menu selection
+            menu_picker = Picker(item_types, "I'll search for:\n[press Intro]")
+            
+            # Override the draw method
+            menu_picker.draw = lambda screen: custom_menu_render(screen, item_types, menu_picker.index, "I'll search for:\n[press Intro]")
+            
+            # Start the picker
+            selected_type, _ = menu_picker.start()
+            selected_type = selected_type[:-1].lower()
             
             # Handle special case for label search
             if selected_type == "label search (google":
