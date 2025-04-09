@@ -1054,9 +1054,9 @@ class QobuzDL:
                     logger.info(f"{YELLOW}Error in search query: {str(e)}{RESET}")
                     continue
                 
-                # If we found results, no need to try other queries
-                if search_results:
-                    break
+                # Continue trying all queries to get more comprehensive results
+                # (Previously, the code would break after finding at least one result)
+                # Note: Removed the early break to collect results from all search queries
             
             # If still no results, try a more general search
             if not search_results:
