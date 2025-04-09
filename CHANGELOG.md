@@ -9,9 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Enhanced multi-selection interface with visual feedback:
-  - Selected items now highlighted in green for better visibility
-  - Improved user guidance with clearer instructions about spacebar selection
-  - Maintained backward compatibility with all selection interfaces
+  - Added real-time selection counter showing number of selected items
+  - Clear checkmark indicators [✓] for selected items
+  - Real-time visual feedback when toggling selections with spacebar
+  - Streamlined multi-selection workflow with clearer instructions
   - Feature applied to standard search methods (Artists, Albums, Tracks, Playlists) only
 
 ## [0.12.1] - 2025-04-07
