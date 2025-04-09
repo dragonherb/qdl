@@ -566,11 +566,11 @@ class QobuzDL:
                 break
         
         def get_title_text(option):
-            # Apply green color to the text if the option is marked as selected
+            # We can't use ANSI color codes inside curses, so we'll use a marker symbol instead
             if option.get("selected", False):
-                return f"{GREEN}{option.get('text')}{RESET}"
+                return f"[✓] {option.get('text')}"
             else:
-                return option.get("text")
+                return f"    {option.get('text')}"
 
         try:
             item_types = ["Artists", "Albums", "Tracks", "Playlists", "Label search (Google)"]
@@ -602,7 +602,7 @@ class QobuzDL:
                 def get_dynamic_title(count=0):
                     return (
                         f'*** RESULTS FOR "{query.title()}" ***\n\n'
-                        f"{WHITE}Selected: {GREEN}{count}{WHITE} items{RESET}\n"
+                        f"Selected: {count} items\n"
                         "Press [space] to select/unselect, [enter] to confirm selection\n"
                         "Press Ctrl+c to quit, or don't select anything to search again"
                     )
