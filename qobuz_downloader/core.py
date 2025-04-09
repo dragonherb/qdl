@@ -618,7 +618,8 @@ class QobuzDL:
                     # Create handler functions for the picker
                     def handle_selection(picker):
                         # Get the currently highlighted option
-                        option = picker.options[picker.get_selected_index()]
+                        current_index = picker.index
+                        option = picker.options[current_index]
                         
                         # Toggle selection status
                         if option.get("selected", False):
