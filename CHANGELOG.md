@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed missing album names in Google Label search folder paths
   - Previously: `Label - Trust In Trance\(2004) Astral Projection - [16B-44.1kHz]`
   - Now: `Label - Trust In Trance\(2004) Astral Projection - Ten [16B-44.1kHz]`
+- Improved configuration handling to properly manage format settings across config.ini and format_config.ini
+- Enhanced config display to show both configuration files when using `-sc` flag
 
 ## [0.13.0.0] - 2025-04-09
 

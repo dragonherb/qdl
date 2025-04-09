@@ -23,10 +23,21 @@ else:
 
 CONFIG_PATH = os.path.join(OS_CONFIG, "QDL")
 CONFIG_FILE = os.path.join(CONFIG_PATH, "config.ini")
+FORMAT_CONFIG_FILE = os.path.join(CONFIG_PATH, "format_config.ini")
 QOBUZ_DB = os.path.join(CONFIG_PATH, "QDL.db")
+
+# Path to blueprint config files in the package directory
+PACKAGE_DIR = os.path.dirname(__file__)
+BLUEPRINT_CONFIG = os.path.join(PACKAGE_DIR, "config.ini")
+BLUEPRINT_FORMAT_CONFIG = os.path.join(PACKAGE_DIR, "format_config.ini")
 
 
 def _reset_config(config_file):
+    """Reset the main configuration file.
+    
+    This function only resets the main config.ini file to avoid losing custom format settings.
+    For the main config, it prompts the user for essential information.
+    """
     logging.info(f"{YELLOW}Creating config file: {config_file}")
     config = configparser.ConfigParser()
     config["DEFAULT"]["email"] = input("Enter your email:\n- ")
@@ -56,20 +67,101 @@ def _reset_config(config_file):
     bundle = Bundle()
     config["DEFAULT"]["app_id"] = str(bundle.get_app_id())
     config["DEFAULT"]["secrets"] = ",".join(bundle.get_secrets().values())
-    config["DEFAULT"]["folder_format"] = DEFAULT_FOLDER
-    config["DEFAULT"]["track_format"] = DEFAULT_TRACK
+    
+    # Comment out folder_format and track_format to use the ones from format_config.ini
+    config["DEFAULT"]["#folder_format"] = DEFAULT_FOLDER
+    config["DEFAULT"]["#track_format"] = DEFAULT_TRACK
+    
     config["DEFAULT"]["smart_discography"] = "false"
     # default_start_mode: Set to 'fun', 'dl', or 'lucky' to automatically start in that mode
     # when running qdl without arguments. Set to 'none' to always show help when no arguments.
     config["DEFAULT"]["default_start_mode"] = "none"
+    
     with open(config_file, "w") as configfile:
         config.write(configfile)
+    
     logging.info(
         f"{GREEN}Config file updated. Edit more options in {config_file}"
         "\nso you don't have to call custom flags every time you run "
         "a qdl command."
     )
 
+
+def _create_format_config():
+    """Create a format_config.ini file if it doesn't exist.
+    
+    This function is only called when the format_config.ini file is missing.
+    It will copy from the blueprint if available, or create a default one.
+    """
+    logging.info(f"{YELLOW}Creating format config file: {FORMAT_CONFIG_FILE}")
+    
+    # Check if the blueprint format config exists
+    if os.path.exists(BLUEPRINT_FORMAT_CONFIG):
+        # Copy the format_config.ini from the package directory
+        try:
+            with open(BLUEPRINT_FORMAT_CONFIG, 'r') as source:
+                blueprint_content = source.read()
+                
+            with open(FORMAT_CONFIG_FILE, 'w') as target:
+                target.write(blueprint_content)
+                
+            logging.info(f"{GREEN}Format configuration file created from blueprint.")
+        except Exception as e:
+            logging.error(f"{RED}Error copying format config: {str(e)}")
+            _create_default_format_config()
+    else:
+        # If blueprint doesn't exist, create a default one
+        logging.warning(f"{YELLOW}Blueprint format config not found, creating default.")
+        _create_default_format_config()
+
+def _create_default_format_config():
+    """Create a default format_config.ini file with essential settings."""
+    format_config = configparser.ConfigParser()
+    
+    # Default section with search mode aliases
+    format_config["DEFAULT"] = {
+        "# Search Mode Aliases": "",
+        "# These map UI search mode names to the appropriate format configuration sections": "",
+        "Artists_search_mode": "artist_discography_dg",
+        "Albums_search_mode": "artist_album_release",
+        "Tracks_search_mode": "single_track_trk",
+        "Playlists_search_mode": "playlists_pls",
+        "Label_search_mode_by_Google": "label_discography_lpk",
+        "default_naming_mode": "artist_discography_dg",
+        "current_naming_mode": "artist_discography_dg"
+    }
+    
+    # Label discography section
+    format_config["label_discography_lpk"] = {
+        "#discography of the label (full collection of releases under selected label)": "",
+        "folder_format": "({year}) {artist} - {album} [{bit_depth}B-{sampling_rate}kHz]",
+        "track_format": "{tracknumber}. {artist} - {tracktitle}",
+        "create_top_folder": "true",
+        "top_folder_format": "Label - {label}"
+    }
+    
+    # Artist discography section
+    format_config["artist_discography_dg"] = {
+        "#artist discography (full collection of artist's releases)": "",
+        "folder_format": "{artist} - ({year}) {album} [{bit_depth}B-{sampling_rate}kHz]",
+        "track_format": "{tracknumber}. {artist} - {tracktitle}",
+        "create_top_folder": "true",
+        "top_folder_format": "{artist}"
+    }
+    
+    # Artist album section
+    format_config["artist_album_release"] = {
+        "#release type artist \"Full Album\" (contains about 7-10 or more tracks approximatelly)": "",
+        "folder_format": "{artist} - {album} ({year}) [{bit_depth}B-{sampling_rate}kHz]",
+        "track_format": "{tracknumber}. {tracktitle}",
+        "create_top_folder": "false"
+    }
+    
+    # Save the format config file
+    with open(FORMAT_CONFIG_FILE, "w") as configfile:
+        format_config.write(configfile)
+    
+    logging.info(f"{GREEN}Default format configuration file created.")
 
 def _remove_leftovers(directory):
     directory = os.path.join(directory, "**", ".*.tmp")
@@ -104,9 +196,17 @@ def _handle_commands(qobuz, arguments):
 
 
 def _initial_checks():
-    if not os.path.isdir(CONFIG_PATH) or not os.path.isfile(CONFIG_FILE):
+    # Check if config directory and files exist
+    if not os.path.isdir(CONFIG_PATH):
         os.makedirs(CONFIG_PATH, exist_ok=True)
+    
+    # Reset config files if main config is missing
+    if not os.path.isfile(CONFIG_FILE):
         _reset_config(CONFIG_FILE)
+    
+    # Create format_config.ini if missing, but don't reset it if it exists
+    if not os.path.isfile(FORMAT_CONFIG_FILE):
+        _create_format_config()
 
 
 def main():
@@ -185,12 +285,22 @@ def main():
             )
 
     if arguments.reset:
-        sys.exit(_reset_config(CONFIG_FILE))
+        # Only reset the main config file when -r flag is used, not the format_config.ini
+        _reset_config(CONFIG_FILE)
+        sys.exit(f"{GREEN}Config file has been reset.")
 
     if arguments.show_config:
-        print(f"Configuation: {CONFIG_FILE}\nDatabase: {QOBUZ_DB}\n---")
+        print(f"Configuration: {CONFIG_FILE}\nFormat Configuration: {FORMAT_CONFIG_FILE}\nDatabase: {QOBUZ_DB}\n---")
+        print(f"{GREEN}Main config.ini:{YELLOW}")
         with open(CONFIG_FILE, "r") as f:
             print(f.read())
+        
+        print(f"{GREEN}Format config.ini:{YELLOW}")
+        if os.path.exists(FORMAT_CONFIG_FILE):
+            with open(FORMAT_CONFIG_FILE, "r") as f:
+                print(f.read())
+        else:
+            print(f"{RED}File not found.")
         sys.exit()
 
     if arguments.purge:
