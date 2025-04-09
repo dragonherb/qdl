@@ -573,6 +573,10 @@ class QobuzDL:
         # Custom picker with green highlighting for selected items
         def custom_pick(options, title, multiselect=False, min_selection_count=0, options_map_func=None, default_index=0):
             """Custom picker function with light-green highlighting for selected items"""
+            # If options is a list of strings and no options_map_func provided, create a simple identity function
+            if options_map_func is None and all(isinstance(opt, str) for opt in options):
+                options_map_func = lambda x: x
+            
             # Create a new picker instance
             picker = Picker(options, title, options_map_func=options_map_func, multiselect=multiselect, min_selection_count=min_selection_count, default_index=default_index)
             
