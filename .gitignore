@@ -1,6 +1,7 @@
 Qobuz Downloads
 __pycache__
-*.egg-info/
+# Temporarily commenting out to fix PKG-INFO
+# *.egg-info/
 dist/
 build/
 *.pyc
