@@ -544,6 +544,8 @@ class QobuzDL:
         """Interactive mode to search and download from Qobuz."""
         try:
             from pick import pick
+            # Import the Picker class directly to enable customization
+            from pick import Picker
         except (ImportError, ModuleNotFoundError):
             if os.name == "nt":
                 sys.exit(
@@ -567,6 +569,38 @@ class QobuzDL:
         
         def get_title_text(option):
             return option.get("text")
+            
+        # Custom picker with green highlighting for selected items
+        def custom_pick(options, title, multiselect=False, min_selection_count=0, options_map_func=None):
+            """Custom picker function with light-green highlighting for selected items"""
+            # Create a new picker instance
+            picker = Picker(options, title, options_map_func=options_map_func, multiselect=multiselect, min_selection_count=min_selection_count)
+            
+            # Backup the original get_option_lines method
+            original_get_option_lines = picker.get_option_lines
+            
+            # Create a custom get_option_lines method with green highlighting for selected items
+            def custom_get_option_lines(self):
+                lines = original_get_option_lines()
+                if self.multiselect:
+                    # Add light-green highlighting to selected options
+                    for i, option in enumerate(self.options):
+                        if i in self.selected_indexes:
+                            # Apply green color to selected items
+                            # Use the original line up to the indicator, then add green color
+                            original_line = lines[i]
+                            if '(*) ' in original_line:
+                                # Find the position of the indicator
+                                indicator_pos = original_line.find('(*) ')
+                                # Create a new line with the green highlight for the content after the indicator
+                                lines[i] = original_line[:indicator_pos+4] + f"{GREEN}{original_line[indicator_pos+4:]}{RESET}"
+                return lines
+            
+            # Replace the original method with our custom one
+            picker.get_option_lines = lambda: custom_get_option_lines(picker)
+            
+            # Start the picker and return the result
+            return picker.start()
 
         try:
             item_types = ["Artists", "Albums", "Tracks", "Playlists", "Label search (Google)"]
@@ -598,9 +632,11 @@ class QobuzDL:
                     f'*** RESULTS FOR "{query.title()}" ***\n\n'
                     "Select [space] the item(s) you want to download "
                     "(one or more)\nPress Ctrl + c to quit\n"
+                    "Selected items will be highlighted in green\n"
                     "Don't select anything to try another search"
                 )
-                selected_items = pick(
+                # Use our custom picker with green highlighting
+                selected_items = custom_pick(
                     options,
                     title,
                     multiselect=True,
@@ -609,7 +645,7 @@ class QobuzDL:
                 )
                 if len(selected_items) > 0:
                     [final_url_list.append(i[0]["url"]) for i in selected_items]
-                    y_n = pick(
+                    y_n = custom_pick(
                         ["Yes, start the download", "No, continue searching"],
                         "Items were added to queue to be downloaded. "
                         "Proceed to download?",
@@ -626,7 +662,7 @@ class QobuzDL:
                     "be automatically\ndowngraded if the selected "
                     "is not found)"
                 )
-                self.quality = pick(
+                self.quality = custom_pick(
                     qualities,
                     desc,
                     default_index=current_quality_index,
