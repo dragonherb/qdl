@@ -618,14 +618,16 @@ class QobuzDL:
                     def custom_get_option_lines(self):
                         lines = []
                         for index, option in enumerate(self.options):
-                            # Check if this option is currently selected
+                            # Add asterisk only for current cursor position, not for selected items
+                            prefix = "* " if index == self.index else "  "
+                            
+                            # Check if this option is selected (for color, not for asterisk)
                             if option.get("selected", False):
-                                prefix = "* "
                                 # The curses library will use this special indicator to apply green color
                                 line = f"\x01{self.options_map_func(option)}\x02"
                             else:
-                                prefix = "  " if index != self.index else "* "
                                 line = self.options_map_func(option)
+                                
                             lines.append(f"{prefix}{line}")
                         return lines
                     
