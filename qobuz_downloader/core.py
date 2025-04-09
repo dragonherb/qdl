@@ -544,8 +544,6 @@ class QobuzDL:
         """Interactive mode to search and download from Qobuz."""
         try:
             from pick import pick
-            # Import the Picker class directly to enable customization
-            from pick import Picker
         except (ImportError, ModuleNotFoundError):
             if os.name == "nt":
                 sys.exit(
@@ -568,43 +566,11 @@ class QobuzDL:
                 break
         
         def get_title_text(option):
-            return option.get("text")
-            
-        # Custom picker with green highlighting for selected items
-        def custom_pick(options, title, multiselect=False, min_selection_count=0, options_map_func=None, default_index=0):
-            """Custom picker function with light-green highlighting for selected items"""
-            # If options is a list of strings and no options_map_func provided, create a simple identity function
-            if options_map_func is None and all(isinstance(opt, str) for opt in options):
-                options_map_func = lambda x: x
-            
-            # Create a new picker instance
-            picker = Picker(options, title, options_map_func=options_map_func, multiselect=multiselect, min_selection_count=min_selection_count, default_index=default_index)
-            
-            # Backup the original get_option_lines method
-            original_get_option_lines = picker.get_option_lines
-            
-            # Create a custom get_option_lines method with green highlighting for selected items
-            def custom_get_option_lines(self):
-                lines = original_get_option_lines()
-                if self.multiselect:
-                    # Add light-green highlighting to selected options
-                    for i, option in enumerate(self.options):
-                        if i in self.selected_indexes:
-                            # Apply green color to selected items
-                            # Use the original line up to the indicator, then add green color
-                            original_line = lines[i]
-                            if '(*) ' in original_line:
-                                # Find the position of the indicator
-                                indicator_pos = original_line.find('(*) ')
-                                # Create a new line with the green highlight for the content after the indicator
-                                lines[i] = original_line[:indicator_pos+4] + f"{GREEN}{original_line[indicator_pos+4:]}{RESET}"
-                return lines
-            
-            # Replace the original method with our custom one
-            picker.get_option_lines = lambda: custom_get_option_lines(picker)
-            
-            # Start the picker and return the result
-            return picker.start()
+            # Apply green color to the text if the option is marked as selected
+            if option.get("selected", False):
+                return f"{GREEN}{option.get('text')}{RESET}"
+            else:
+                return option.get("text")
 
         try:
             item_types = ["Artists", "Albums", "Tracks", "Playlists", "Label search (Google)"]
@@ -639,17 +605,56 @@ class QobuzDL:
                     "Selected items will be highlighted in green\n"
                     "Don't select anything to try another search"
                 )
-                # Use our custom picker with green highlighting
-                selected_items = custom_pick(
-                    options,
-                    title,
-                    multiselect=True,
-                    min_selection_count=0,
-                    options_map_func=get_title_text,
-                )
+                
+                # Use the standard picker but with a custom handler for spacebar
+                # to toggle both selection and highlight
+                selected_items = []
+                current_options = options.copy()
+                
+                # Start the interactive selection
+                try:
+                    # Create a loop for interactive selection until user is done
+                    selecting = True
+                    while selecting:
+                        option = pick(
+                            current_options,
+                            title,
+                            options_map_func=get_title_text,
+                        )[0]
+                        
+                        # Toggle selection status
+                        option_index = current_options.index(option)
+                        
+                        # Toggle the selected state
+                        if option.get("selected", False):
+                            # Remove selection
+                            option["selected"] = False
+                            # Remove from selected items if already there
+                            if option in selected_items:
+                                selected_items.remove(option)
+                        else:
+                            # Add selection
+                            option["selected"] = True
+                            # Add to selected items if not already there
+                            if option not in selected_items:
+                                selected_items.append(option)
+                        
+                        # Check if the user pressed Enter (which means they're done selecting)
+                        continue_selecting = pick(
+                            ["Select more items", "Proceed with current selection"],
+                            f"\nYou have {len(selected_items)} items selected. What would you like to do?",
+                            default_index=0
+                        )[0]
+                        
+                        if continue_selecting == "Proceed with current selection":
+                            selecting = False
+                except KeyboardInterrupt:
+                    # If ctrl+c is pressed, exit the selection mode
+                    logger.info(f"{YELLOW}Selection cancelled.")
+                    return
                 if len(selected_items) > 0:
-                    [final_url_list.append(i[0]["url"]) for i in selected_items]
-                    y_n = custom_pick(
+                    [final_url_list.append(item["url"]) for item in selected_items]
+                    y_n = pick(
                         ["Yes, start the download", "No, continue searching"],
                         "Items were added to queue to be downloaded. "
                         "Proceed to download?",
@@ -666,7 +671,7 @@ class QobuzDL:
                     "be automatically\ndowngraded if the selected "
                     "is not found)"
                 )
-                self.quality = custom_pick(
+                self.quality = pick(
                     qualities,
                     desc,
                     default_index=current_quality_index,
