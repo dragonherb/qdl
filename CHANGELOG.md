@@ -5,6 +5,15 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.1.0] - 2025-04-09
+
+### Fixed
+- Improved Google label search to collect results from all search queries instead of stopping after the first successful one
+- Added more search variations and increased results per query to provide more comprehensive label search results
+- Fixed missing album names in Google Label search folder paths
+  - Previously: `Label - Trust In Trance\(2004) Astral Projection - [16B-44.1kHz]`
+  - Now: `Label - Trust In Trance\(2004) Astral Projection - Ten [16B-44.1kHz]`
+
 ## [0.13.0.0] - 2025-04-09
 
 ### Added
