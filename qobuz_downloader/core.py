@@ -566,11 +566,9 @@ class QobuzDL:
                 break
         
         def get_title_text(option):
-            # We can't use ANSI color codes inside curses, so we'll use a marker symbol instead
-            if option.get("selected", False):
-                return f"[✓] {option.get('text')}"
-            else:
-                return f"    {option.get('text')}"
+            # Simple function to return just the text without any decorations
+            # Our custom drawing function will handle the colors
+            return option.get("text")
 
         try:
             item_types = ["Artists", "Albums", "Tracks", "Playlists", "Label search (Google)"]
@@ -611,9 +609,25 @@ class QobuzDL:
                 try:
                     # We'll implement a modified approach using the existing pick library
                     from pick import Picker
+                    import curses
                     
                     # Create a list to track selected items
                     selected_items = []
+                    
+                    # Override the get_option_lines method to use curses colors for selected items
+                    def custom_get_option_lines(self):
+                        lines = []
+                        for index, option in enumerate(self.options):
+                            # Check if this option is currently selected
+                            if option.get("selected", False):
+                                prefix = "* "
+                                # The curses library will use this special indicator to apply green color
+                                line = f"\x01{self.options_map_func(option)}\x02"
+                            else:
+                                prefix = "  " if index != self.index else "* "
+                                line = self.options_map_func(option)
+                            lines.append(f"{prefix}{line}")
+                        return lines
                     
                     # Create handler functions for the picker
                     def handle_selection(picker):
@@ -637,13 +651,68 @@ class QobuzDL:
                         picker.title = get_dynamic_title(len(selected_items))
                         return None  # Continue selection
                     
+                    # Custom _start method for the picker that sets up colors
+                    def custom_start(screen):
+                        # Setup curses colors
+                        curses.start_color()  # Initialize color support
+                        curses.use_default_colors()  # Use terminal's default colors
+                        # Define color pair 1 as green text (foreground=2) on default background (background=-1)
+                        curses.init_pair(1, 2, -1)  # 2 is green in curses
+                        
+                        # Set up screen for our custom display
+                        screen.clear()
+                        
+                        # Call the original _start method (after patching)
+                        return picker._original_start(screen)
+                    
+                    # Custom draw function to apply colors to selected items
+                    def custom_draw(self, screen):
+                        """Draw the picker to the screen"""
+                        self.screen = screen
+                        
+                        # Setup colors
+                        GREEN = curses.color_pair(1)
+                        
+                        # Draw the title
+                        screen.addstr(0, 0, self.title)
+                        # Add a blank line
+                        screen.addstr(self.title.count('\n') + 1, 0, "")
+
+                        # Print options
+                        option_lines = self.get_option_lines()
+                        for index, line in enumerate(option_lines):
+                            if "\x01" in line and "\x02" in line:  # Special color indicators
+                                # Split line into parts before and after color indicators
+                                before, rest = line.split("\x01", 1)
+                                middle, after = rest.split("\x02", 1)
+                                # Print each part with appropriate color
+                                screen.addstr(self.title.count('\n') + 2 + index, 0, before)
+                                screen.addstr(middle, GREEN)  # Apply green color
+                                screen.addstr(after)
+                            else:
+                                # Regular line without color
+                                screen.addstr(self.title.count('\n') + 2 + index, 0, line)
+                        
+                        # Move cursor to selected option
+                        screen.move(self.title.count('\n') + 2 + self.index, 0)
+                        # Refresh the screen
+                        screen.refresh()
+                        
                     # Create a custom picker with our handler
                     picker = Picker(options, get_dynamic_title(0), options_map_func=get_title_text)
+                    
+                    # Save original methods before overriding
+                    picker._original_start = picker._start
+                    
+                    # Override methods to use our custom implementations
+                    picker.get_option_lines = lambda: custom_get_option_lines(picker)
+                    picker._start = custom_start
+                    picker.draw = lambda screen: custom_draw(picker, screen)
                     
                     # Register the spacebar key to toggle selection
                     picker.register_custom_handler(ord(' '), handle_selection)
                     
-                    # Start the picker
+                    # Start the picker with curses wrapper
                     option, index = picker.start()
                     
                     # At this point, the user has pressed Enter to finish selection
