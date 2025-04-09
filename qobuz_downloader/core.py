@@ -571,10 +571,10 @@ class QobuzDL:
             return option.get("text")
             
         # Custom picker with green highlighting for selected items
-        def custom_pick(options, title, multiselect=False, min_selection_count=0, options_map_func=None):
+        def custom_pick(options, title, multiselect=False, min_selection_count=0, options_map_func=None, default_index=0):
             """Custom picker function with light-green highlighting for selected items"""
             # Create a new picker instance
-            picker = Picker(options, title, options_map_func=options_map_func, multiselect=multiselect, min_selection_count=min_selection_count)
+            picker = Picker(options, title, options_map_func=options_map_func, multiselect=multiselect, min_selection_count=min_selection_count, default_index=default_index)
             
             # Backup the original get_option_lines method
             original_get_option_lines = picker.get_option_lines
