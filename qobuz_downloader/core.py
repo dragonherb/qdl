@@ -673,7 +673,13 @@ class QobuzDL:
                         self.screen = screen
                         
                         # Setup colors
+                        curses.start_color()
+                        curses.use_default_colors()
+                        curses.init_pair(1, 2, -1)     # Green text (2) on default background (-1)
+                        curses.init_pair(2, 3, -1)     # Yellow text (3) on default background (-1)
+                        
                         GREEN = curses.color_pair(1)
+                        YELLOW = curses.color_pair(2)
                         
                         # Draw the title
                         screen.addstr(0, 0, self.title)
@@ -683,17 +689,35 @@ class QobuzDL:
                         # Print options
                         option_lines = self.get_option_lines()
                         for index, line in enumerate(option_lines):
-                            if "\x01" in line and "\x02" in line:  # Special color indicators
+                            line_position = self.title.count('\n') + 2 + index
+                            
+                            if "\x01" in line and "\x02" in line:  # Special color indicators for green text
                                 # Split line into parts before and after color indicators
                                 before, rest = line.split("\x01", 1)
                                 middle, after = rest.split("\x02", 1)
-                                # Print each part with appropriate color
-                                screen.addstr(self.title.count('\n') + 2 + index, 0, before)
+                                
+                                # Print asterisk in yellow if it's in the prefix
+                                if "*" in before:
+                                    asterisk_pos = before.find("*")
+                                    screen.addstr(line_position, 0, before[:asterisk_pos])
+                                    screen.addstr("*", YELLOW)  # Yellow asterisk
+                                    screen.addstr(before[asterisk_pos+1:])
+                                else:
+                                    screen.addstr(line_position, 0, before)
+                                    
+                                # Print the selected text in green
                                 screen.addstr(middle, GREEN)  # Apply green color
                                 screen.addstr(after)
                             else:
-                                # Regular line without color
-                                screen.addstr(self.title.count('\n') + 2 + index, 0, line)
+                                # Regular line without color highlights for selection
+                                # But still highlight the asterisk in yellow if present
+                                if "*" in line:
+                                    asterisk_pos = line.find("*")
+                                    screen.addstr(line_position, 0, line[:asterisk_pos])
+                                    screen.addstr("*", YELLOW)  # Yellow asterisk
+                                    screen.addstr(line[asterisk_pos+1:])
+                                else:
+                                    screen.addstr(line_position, 0, line)
                         
                         # Move cursor to selected option
                         screen.move(self.title.count('\n') + 2 + self.index, 0)
@@ -829,10 +853,65 @@ class QobuzDL:
                 
                 if options:
                     try:
-                        # Using the globally imported pick function for interactive selection
-                        selected = pick(
-                            options, title, options_map_func=get_title_text
-                        )
+                        # Using curses for consistent visual styling
+                        import curses
+                        
+                        # Custom render function to ensure consistent styling with yellow asterisk and green selection
+                        def custom_label_render(screen, options, selected_option_index, title):
+                            try:
+                                # Setup colors
+                                curses.start_color()
+                                curses.use_default_colors()
+                                curses.init_pair(1, 2, -1)  # Green text (2) on default background (-1)
+                                curses.init_pair(2, 3, -1)  # Yellow text (3) on default background (-1)
+                                
+                                GREEN = curses.color_pair(1)
+                                YELLOW = curses.color_pair(2)
+                                
+                                # Clear screen
+                                screen.clear()
+                                
+                                # Draw title
+                                screen.addstr(0, 0, title)
+                                screen.addstr(title.count('\n') + 1, 0, "")
+                                
+                                # Draw options
+                                for i, option in enumerate(options):
+                                    text = get_title_text(option)
+                                    line_position = title.count('\n') + 2 + i
+                                    
+                                    # Add prefix based on whether this is the selected option
+                                    prefix = "* " if i == selected_option_index else "  "
+                                    
+                                    # Highlight current item in green (no multiselect in label search)
+                                    if i == selected_option_index:
+                                        # Draw yellow asterisk
+                                        screen.addstr(line_position, 0, " ")
+                                        screen.addstr("*", YELLOW)
+                                        screen.addstr(" ")
+                                        # Draw option text in green
+                                        screen.addstr(text, GREEN)
+                                    else:
+                                        screen.addstr(line_position, 0, prefix + text)
+                                
+                                screen.refresh()
+                            
+                            except Exception as e:
+                                # In case of any error, fall back to normal pick
+                                pass
+                        
+                        # Import Picker class for more control
+                        from pick import Picker
+                        
+                        # Create custom picker for label selection
+                        label_picker = Picker(options, title, options_map_func=get_title_text)
+                        
+                        # Override the draw method
+                        original_draw = label_picker.draw
+                        label_picker.draw = lambda screen: custom_label_render(screen, options, label_picker.index, title)
+                        
+                        # Use the custom picker
+                        selected = label_picker.start()
                         
                         # Use the cleaned URL for downloading
                         label_url = selected[0]["url"]
