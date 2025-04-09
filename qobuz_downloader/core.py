@@ -1000,7 +1000,10 @@ class QobuzDL:
             search_queries = [
                 f"site:qobuz.com {query} label",
                 f"site:qobuz.com/label {query}",
-                f"site:qobuz.com {query} record label"
+                f"site:qobuz.com {query} record label",
+                # Added more specific queries to try to catch additional labels
+                f"\"{query}\" site:qobuz.com label",
+                f"qobuz.com label \"{query}\""
             ]
             
             search_results = []
@@ -1015,7 +1018,8 @@ class QobuzDL:
                     time.sleep(random.uniform(1.0, 2.0))
                     
                     # Use googlesearch-python to find Qobuz URLs
-                    for url in google_search(search_query, num_results=5, lang="en"):
+                    # Increased num_results to find more potential matches
+                    for url in google_search(search_query, num_results=10, lang="en"):
                         # Only print the first found URL for each search query, avoid flooding the output
                         if len(search_results) == 0 and "/label/" in url:
                             logger.info(f"{WHITE}Found URL: {url}{RESET}")
@@ -1027,7 +1031,8 @@ class QobuzDL:
                         seen_urls.add(url)  # Add to seen URLs
                         
                         # More flexible pattern matching for Qobuz label URLs
-                        if "qobuz.com" in url and ("/label/" in url or "label" in url):
+                        # Loosened criteria to catch more potential label URLs
+                        if "qobuz.com" in url and ("/label/" in url or "label" in url.lower()):
                             # Extract label name for display
                             try:
                                 if "/label/" in url:
