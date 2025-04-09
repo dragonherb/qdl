@@ -5,6 +5,20 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0.0] - 2025-04-09
+
+### Added
+- Complete multi-selection interface overhaul with consistent visual design:
+  - Yellow asterisks for cursor position indicators across all menus
+  - Green highlighting for selected items and current selections
+  - Unified color scheme across all application interfaces
+  - Improved visual feedback in both regular search and label search modes
+
+### Changed
+- Refactored terminal display code to use native curses library for better color support
+- Enhanced UI consistency across the entire application
+- Streamlined selection workflow with intuitive color indicators
+
 ## [0.12.2] - 2025-04-09
 
 ### Added
