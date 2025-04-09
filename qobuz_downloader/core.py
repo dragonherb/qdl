@@ -583,8 +583,8 @@ class QobuzDL:
                     # Setup colors
                     curses.start_color()
                     curses.use_default_colors()
-                    curses.init_pair(1, 2, -1)  # Green text (2) on default background (-1)
-                    curses.init_pair(2, 3, -1)  # Yellow text (3) on default background (-1)
+                    curses.init_pair(1, curses.COLOR_GREEN, -1)  # Green text on default background (-1)
+                    curses.init_pair(2, curses.COLOR_YELLOW, -1)  # Yellow text on default background (-1)
                     
                     GREEN = curses.color_pair(1)
                     YELLOW = curses.color_pair(2)
@@ -707,8 +707,10 @@ class QobuzDL:
                         # Setup curses colors
                         curses.start_color()  # Initialize color support
                         curses.use_default_colors()  # Use terminal's default colors
-                        # Define color pair 1 as green text (foreground=2) on default background (background=-1)
-                        curses.init_pair(1, 2, -1)  # 2 is green in curses
+                        
+                        # Define color pairs using proper curses color constants
+                        curses.init_pair(1, curses.COLOR_GREEN, -1)  # Green text on default background
+                        curses.init_pair(2, curses.COLOR_YELLOW, -1)  # Yellow text on default background
                         
                         # Set up screen for our custom display
                         screen.clear()
@@ -724,8 +726,8 @@ class QobuzDL:
                         # Setup colors
                         curses.start_color()
                         curses.use_default_colors()
-                        curses.init_pair(1, 2, -1)     # Green text (2) on default background (-1)
-                        curses.init_pair(2, 3, -1)     # Yellow text (3) on default background (-1)
+                        curses.init_pair(1, curses.COLOR_GREEN, -1)  # Green text on default background
+                        curses.init_pair(2, curses.COLOR_YELLOW, -1)  # Yellow text on default background
                         
                         GREEN = curses.color_pair(1)
                         YELLOW = curses.color_pair(2)
@@ -911,8 +913,8 @@ class QobuzDL:
                                 # Setup colors
                                 curses.start_color()
                                 curses.use_default_colors()
-                                curses.init_pair(1, 2, -1)  # Green text (2) on default background (-1)
-                                curses.init_pair(2, 3, -1)  # Yellow text (3) on default background (-1)
+                                curses.init_pair(1, curses.COLOR_GREEN, -1)  # Green text on default background (-1)
+                                curses.init_pair(2, curses.COLOR_YELLOW, -1)  # Yellow text on default background (-1)
                                 
                                 GREEN = curses.color_pair(1)
                                 YELLOW = curses.color_pair(2)
