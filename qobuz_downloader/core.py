@@ -598,65 +598,65 @@ class QobuzDL:
                 if not options:
                     logger.info(f"{OFF}Nothing found{RESET}")
                     continue
-                title = (
-                    f'*** RESULTS FOR "{query.title()}" ***\n\n'
-                    "Select [space] the item(s) you want to download "
-                    "(one or more)\nPress Ctrl + c to quit\n"
-                    "Selected items will be highlighted in green\n"
-                    "Don't select anything to try another search"
-                )
+                # Create a dynamic title that updates with the selection count
+                def get_dynamic_title(count=0):
+                    return (
+                        f'*** RESULTS FOR "{query.title()}" ***\n\n'
+                        f"{WHITE}Selected: {GREEN}{count}{WHITE} items{RESET}\n"
+                        "Press [space] to select/unselect, [enter] to confirm selection\n"
+                        "Press Ctrl+c to quit, or don't select anything to search again"
+                    )
                 
-                # Use the standard picker but with a custom handler for spacebar
-                # to toggle both selection and highlight
-                selected_items = []
-                current_options = options.copy()
-                
-                # Start the interactive selection
+                # Create a customized version of the picker to provide real-time feedback
                 try:
-                    # Create a loop for interactive selection until user is done
-                    selecting = True
-                    while selecting:
-                        option = pick(
-                            current_options,
-                            title,
-                            options_map_func=get_title_text,
-                        )[0]
+                    # We'll implement a modified approach using the existing pick library
+                    from pick import Picker
+                    
+                    # Create a list to track selected items
+                    selected_items = []
+                    
+                    # Create handler functions for the picker
+                    def handle_selection(picker):
+                        # Get the currently highlighted option
+                        option = picker.options[picker.get_selected_index()]
                         
                         # Toggle selection status
-                        option_index = current_options.index(option)
-                        
-                        # Toggle the selected state
                         if option.get("selected", False):
                             # Remove selection
                             option["selected"] = False
-                            # Remove from selected items if already there
                             if option in selected_items:
                                 selected_items.remove(option)
                         else:
                             # Add selection
                             option["selected"] = True
-                            # Add to selected items if not already there
                             if option not in selected_items:
                                 selected_items.append(option)
                         
-                        # Check if the user pressed Enter (which means they're done selecting)
-                        continue_selecting = pick(
-                            ["Select more items", "Proceed with current selection"],
-                            f"\nYou have {len(selected_items)} items selected. What would you like to do?",
-                            default_index=0
-                        )[0]
-                        
-                        if continue_selecting == "Proceed with current selection":
-                            selecting = False
-                except KeyboardInterrupt:
-                    # If ctrl+c is pressed, exit the selection mode
-                    logger.info(f"{YELLOW}Selection cancelled.")
+                        # Update the title with the current selection count
+                        picker.title = get_dynamic_title(len(selected_items))
+                        return None  # Continue selection
+                    
+                    # Create a custom picker with our handler
+                    picker = Picker(options, get_dynamic_title(0), options_map_func=get_title_text)
+                    
+                    # Register the spacebar key to toggle selection
+                    picker.register_custom_handler(ord(' '), handle_selection)
+                    
+                    # Start the picker
+                    option, index = picker.start()
+                    
+                    # At this point, the user has pressed Enter to finish selection
+                    # Our selected_items list contains all items that were toggled on
+                    
+                except (ImportError, KeyboardInterrupt):
+                    # If ctrl+c is pressed or there's an error with the picker
+                    logger.info(f"{YELLOW}Selection cancelled.{RESET}")
                     return
                 if len(selected_items) > 0:
                     [final_url_list.append(item["url"]) for item in selected_items]
                     y_n = pick(
                         ["Yes, start the download", "No, continue searching"],
-                        "Items were added to queue to be downloaded. "
+                        f"{len(selected_items)} items were added to queue to be downloaded. "
                         "Proceed to download?",
                         default_index=0
                     )
