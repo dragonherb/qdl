@@ -9,8 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Enhanced multi-selection interface with visual feedback:
-  - Added real-time selection counter showing number of selected items
-  - Clear checkmark indicators [✓] for selected items
+  - Native curses-based green highlighting for selected items
+  - Real-time selection counter showing number of selected items
+  - Improved cursor navigation with non-sticky asterisk indicator
   - Real-time visual feedback when toggling selections with spacebar
   - Streamlined multi-selection workflow with clearer instructions
   - Feature applied to standard search methods (Artists, Albums, Tracks, Playlists) only
