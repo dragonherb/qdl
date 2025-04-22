@@ -8,3 +8,6 @@ build/
 *.pyo
 *.pyd
 .Python
+# Backup files
+*backup*
+*- mod v*
