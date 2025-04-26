@@ -86,17 +86,36 @@ class QobuzDL:
         
         # Read format configuration
         self.format_config = configparser.ConfigParser()
-        # Try to read from different possible locations
-        config_paths = [
+        
+        # Define user config path - this should be the primary config location
+        user_config_path = os.path.join(os.environ.get('APPDATA', ''), 'QDL', 'format_config.ini') if os.name == 'nt' else os.path.join(os.environ.get('HOME', ''), '.config', 'QDL', 'format_config.ini')
+        
+        # Define fallback paths
+        fallback_paths = [
             'format_config.ini',  # Current directory
             os.path.join(os.path.dirname(__file__), 'format_config.ini'),  # Module directory
-            os.path.join(os.environ.get('APPDATA', ''), 'QDL', 'format_config.ini') if os.name == 'nt' else 
-            os.path.join(os.environ.get('HOME', ''), '.config', 'QDL', 'format_config.ini')  # User config dir
         ]
-        for path in config_paths:
-            if os.path.exists(path):
-                self.format_config.read(path)
-                break
+        
+        # First check if user config exists
+        if os.path.exists(user_config_path):
+            # User config exists, use it exclusively
+            logger.info(f"Using user config file: {user_config_path}")
+            self.format_config.read(user_config_path)
+        else:
+            # User config doesn't exist, try fallbacks
+            logger.warning(f"User config file not found at {user_config_path}")
+            logger.info("Checking fallback locations...")
+            
+            found_fallback = False
+            for path in fallback_paths:
+                if os.path.exists(path):
+                    logger.info(f"Using fallback config from: {path}")
+                    self.format_config.read(path)
+                    found_fallback = True
+                    break  # Only use the first fallback found
+            
+            if not found_fallback:
+                logger.warning("No format_config.ini files found in any location!")
 
     def get_naming_mode(self, search_mode):
         """Get the naming mode based on search mode and configuration"""
@@ -243,8 +262,15 @@ class QobuzDL:
                 'track_title': track_data.get('title', '')  # Alternate name
             }
             
+            # Get the track format string
+            track_format = format_config['track_format']
+            
+            # Check if the track_format is referencing default_track_format
+            if track_format == 'default_track_format' and 'default_track_format' in self.format_config['DEFAULT']:
+                track_format = self.format_config['DEFAULT']['default_track_format']
+            
             # Format the track name
-            return format_config['track_format'].format(**variables)
+            return track_format.format(**variables)
         except (KeyError, configparser.Error) as e:
             logger.warning(f"Error in format_track_name: {e}. Using default track format.")
             # Fallback to default format
@@ -278,17 +304,29 @@ class QobuzDL:
             )
             return
         try:
-            # If we have a parent search mode, get the proper folder format
-            # This ensures child albums get formatted with the parent collection's style
+            # Get the proper folder and track formats
             folder_format = self.folder_format
             track_format = self.track_format
             
+            # Determine the naming mode to use
+            naming_mode = None
             if parent_search_mode:
+                # If we have a parent search mode, use that
                 naming_mode = self.get_naming_mode(parent_search_mode)
-                if naming_mode in self.format_config:
-                    format_config = self.format_config[naming_mode]
-                    folder_format = format_config.get('folder_format', self.folder_format)
-                    track_format = format_config.get('track_format', self.track_format)
+            else:
+                # For direct album/track downloads, use the appropriate mode based on the album flag
+                naming_mode = self.get_naming_mode("album" if album else "track")
+            
+            # Get format settings from the config if the naming mode exists
+            if naming_mode in self.format_config:
+                format_config = self.format_config[naming_mode]
+                folder_format = format_config.get('folder_format', self.folder_format)
+                track_format = format_config.get('track_format', self.track_format)
+                
+                # Always check if the track_format is referencing default_track_format
+                if track_format == 'default_track_format' and 'default_track_format' in self.format_config['DEFAULT']:
+                    logger.info(f"Using default_track_format: {self.format_config['DEFAULT']['default_track_format']}")
+                    track_format = self.format_config['DEFAULT']['default_track_format']
                     
             dloader = downloader.Download(
                 self.client,
