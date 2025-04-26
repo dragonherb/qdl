@@ -287,11 +287,13 @@ class QobuzDL:
             secret for secret in bundle.get_secrets().values() if secret
         ]  # avoid empty fields
 
-    def download_from_id(self, item_data, album=True, alt_path=None):
+    def download_from_id(self, item_data, album=True, alt_path=None, from_dl_mode=False):
         # Handle both old-style item_id (string) and new-style item_meta (dict)
         if isinstance(item_data, dict):
             item_id = item_data.get("id")
             parent_search_mode = item_data.get("parent_search_mode")
+            # Check if this is coming from dl mode
+            from_dl_mode = item_data.get("from_dl_mode", False)
         else:
             item_id = item_data
             parent_search_mode = None
@@ -325,8 +327,12 @@ class QobuzDL:
                 
                 # Always check if the track_format is referencing default_track_format
                 if track_format == 'default_track_format' and 'default_track_format' in self.format_config['DEFAULT']:
-                    logger.info(f"Using default_track_format: {self.format_config['DEFAULT']['default_track_format']}")
                     track_format = self.format_config['DEFAULT']['default_track_format']
+                    
+                # Only display format info if not coming from dl mode (where it's already shown)
+                if not from_dl_mode:
+                    logger.info(f"{YELLOW}Track Format:{WHITE} {track_format} {GREEN}(Default){RESET}")
+                    logger.info(f"{YELLOW}Folder Format:{WHITE} {folder_format} {GREEN}({naming_mode.replace('_', ' ').title()}){RESET}")
                     
             dloader = downloader.Download(
                 self.client,
@@ -423,7 +429,8 @@ class QobuzDL:
                 # Create a dictionary to store the search mode for download_from_id
                 item_meta = {
                     "id": item["id"],
-                    "parent_search_mode": url_type
+                    "parent_search_mode": url_type,
+                    "from_dl_mode": False  # This is from fun mode, not dl mode
                 }
                 self.download_from_id(
                     item_meta,
@@ -446,6 +453,175 @@ class QobuzDL:
                 self.download_from_txt_file(url)
             else:
                 self.handle_url(url)
+                
+    def direct_link_menu(self, urls):
+        """Display a menu for selecting download type for direct links and then download them."""
+        if not urls or not isinstance(urls, list):
+            logger.info(f"{OFF}Nothing to download")
+            return
+            
+        try:
+            from pick import pick
+        except (ImportError, ModuleNotFoundError):
+            if os.name == "nt":
+                sys.exit(
+                    "Please install curses with "
+                    '"pip3 install windows-curses" to continue'
+                )
+            raise
+            
+        # Define the download types
+        download_types = ["Artist", "Album", "Track", "Playlist", "LabelPack"]
+        
+        try:
+            # Create custom picker for the download type selection with consistent styling
+            import curses
+            from pick import Picker
+            
+            # Custom render function for the menu selection
+            def custom_menu_render(screen, options, selected_option_index, title):
+                try:
+                    # Setup colors
+                    curses.start_color()
+                    curses.use_default_colors()
+                    curses.init_pair(1, curses.COLOR_GREEN, -1)  # Green text on default background (-1)
+                    curses.init_pair(2, curses.COLOR_YELLOW, -1)  # Yellow text on default background (-1)
+                    
+                    GREEN = curses.color_pair(1)
+                    YELLOW = curses.color_pair(2)
+                    
+                    # Clear screen
+                    screen.clear()
+                    
+                    # Draw title
+                    screen.addstr(0, 0, title)
+                    screen.addstr(title.count('\n') + 1, 0, "")
+                    
+                    # Draw options
+                    for i, option in enumerate(options):
+                        line_position = title.count('\n') + 2 + i
+                        
+                        # Add prefix based on whether this is the selected option
+                        if i == selected_option_index:
+                            # Draw yellow asterisk and green text for selected option
+                            screen.addstr(line_position, 0, " ")
+                            screen.addstr("*", YELLOW)
+                            screen.addstr(" ")
+                            screen.addstr(option, GREEN)
+                        else:
+                            screen.addstr(line_position, 0, "  " + option)
+                    
+                    screen.refresh()
+                
+                except Exception as e:
+                    # In case of any error, fall back to normal pick
+                    pass
+            
+            # Create custom picker for menu selection
+            menu_picker = Picker(download_types, "Specify the type of download link, please:\n[press Intro]")
+            
+            # Override the draw method
+            menu_picker.draw = lambda screen: custom_menu_render(screen, download_types, menu_picker.index, "Specify the type of download link, please:\n[press Intro]")
+            
+            # Start the picker
+            selected_type, _ = menu_picker.start()
+            
+            # Convert selected_type to string to ensure it works as a dictionary key
+            selected_type_str = str(selected_type)
+            
+            # Map the selected type to the URL type expected by handle_url
+            type_mapping = {
+                "Artist": "artist",
+                "Album": "album",
+                "Track": "track",
+                "Playlist": "playlist",
+                "LabelPack": "label"
+            }
+            
+            # Get the URL type from the user's selection
+            selected_url_type = type_mapping.get(selected_type_str, "album")  # Default to album if not found
+            
+            # Get the naming mode based on the selected type
+            naming_mode = self.get_naming_mode(selected_url_type)
+            
+            # Get the format settings from the config
+            try:
+                if naming_mode in self.format_config:
+                    format_config = self.format_config[naming_mode]
+                    folder_format = format_config.get('folder_format', self.folder_format)
+                    track_format = format_config.get('track_format', self.track_format)
+                    
+                    # Check if track_format references default_track_format
+                    if track_format == 'default_track_format' and 'default_track_format' in self.format_config['DEFAULT']:
+                        track_format = self.format_config['DEFAULT']['default_track_format']
+                else:
+                    folder_format = self.folder_format
+                    track_format = self.track_format
+            except (KeyError, configparser.Error):
+                folder_format = self.folder_format
+                track_format = self.track_format
+            
+            # Display the enhanced output message with the requested formatting
+            logger.info(f"{GREEN}Processing URLs as {selected_url_type} type, using:{RESET}")
+            logger.info(f"{YELLOW}Track Format:{WHITE} {track_format} {GREEN}(Default){RESET}")
+            logger.info(f"{YELLOW}Folder Format:{WHITE} {folder_format} {GREEN}({naming_mode.replace('_', ' ').title()}){RESET}")
+            
+            # Process each URL with the selected type
+            for url in urls:
+                if "last.fm" in url:
+                    self.download_lastfm_pl(url)
+                elif os.path.isfile(url):
+                    self.download_from_txt_file(url)
+                else:
+                    try:
+                        # Extract the URL info
+                        _, item_id = get_url_info(url)
+                        
+                        # Create a new URL with the selected type and the extracted ID
+                        # This is a bit of a hack, but it allows us to reuse the handle_url function
+                        if "qobuz.com" in url:
+                            # For Qobuz URLs, we can modify the URL type
+                            parts = url.split("/")
+                            for i, part in enumerate(parts):
+                                if part in ["album", "track", "artist", "label", "playlist"]:
+                                    parts[i] = selected_url_type
+                                    break
+                            new_url = "/".join(parts)
+                        else:
+                            # For other URLs, construct a fake URL with the selected type
+                            new_url = f"https://play.qobuz.com/{selected_url_type}/{item_id}"
+                        
+                        # Mark this as coming from dl mode
+                        if selected_url_type == "album" or selected_url_type == "track":
+                            # For direct album/track downloads, we need to extract the ID and call download_from_id
+                            try:
+                                _, item_id = get_url_info(new_url)
+                                item_meta = {
+                                    "id": item_id,
+                                    "parent_search_mode": selected_url_type,
+                                    "from_dl_mode": True  # Mark as coming from dl mode
+                                }
+                                self.download_from_id(
+                                    item_meta,
+                                    selected_url_type == "album",
+                                    None,
+                                    True
+                                )
+                            except Exception as e:
+                                logger.error(f"{RED}Error processing URL: {e}. Using handle_url.")
+                                self.handle_url(new_url)
+                        else:
+                            # For other types (artist, label, playlist), use handle_url
+                            self.handle_url(new_url)
+                        
+                    except (KeyError, IndexError) as e:
+                        logger.info(f'{RED}Error processing URL: {e}. Using original URL.')
+                        self.handle_url(url)
+                
+        except Exception as e:
+            logger.error(f"{RED}Error in direct link menu: {e}. Proceeding with default handling.")
+            # Fall back to normal download_list_of_urls
+            self.download_list_of_urls(urls)
 
     def download_from_txt_file(self, txt_file):
         with open(txt_file, "r") as txt:
@@ -761,57 +937,101 @@ class QobuzDL:
                         """Draw the picker to the screen"""
                         self.screen = screen
                         
-                        # Setup colors
-                        curses.start_color()
-                        curses.use_default_colors()
-                        curses.init_pair(1, curses.COLOR_GREEN, -1)  # Green text on default background
-                        curses.init_pair(2, curses.COLOR_YELLOW, -1)  # Yellow text on default background
-                        
-                        GREEN = curses.color_pair(1)
-                        YELLOW = curses.color_pair(2)
-                        
-                        # Draw the title
-                        screen.addstr(0, 0, self.title)
-                        # Add a blank line
-                        screen.addstr(self.title.count('\n') + 1, 0, "")
-
-                        # Print options
-                        option_lines = self.get_option_lines()
-                        for index, line in enumerate(option_lines):
-                            line_position = self.title.count('\n') + 2 + index
+                        try:
+                            # Get terminal dimensions
+                            max_y, max_x = screen.getmaxyx()
                             
-                            if "\x01" in line and "\x02" in line:  # Special color indicators for green text
-                                # Split line into parts before and after color indicators
-                                before, rest = line.split("\x01", 1)
-                                middle, after = rest.split("\x02", 1)
+                            # Setup colors
+                            curses.start_color()
+                            curses.use_default_colors()
+                            curses.init_pair(1, curses.COLOR_GREEN, -1)  # Green text on default background
+                            curses.init_pair(2, curses.COLOR_YELLOW, -1)  # Yellow text on default background
+                            
+                            GREEN = curses.color_pair(1)
+                            YELLOW = curses.color_pair(2)
+                            
+                            # Draw the title (truncate if needed)
+                            title_lines = self.title.split('\n')
+                            for i, title_line in enumerate(title_lines):
+                                if i < max_y:
+                                    # Truncate title line if it's too long
+                                    if len(title_line) > max_x - 1:
+                                        title_line = title_line[:max_x - 4] + "..."
+                                    screen.addstr(i, 0, title_line)
+                            
+                            # Add a blank line if there's room
+                            if self.title.count('\n') + 1 < max_y:
+                                screen.addstr(self.title.count('\n') + 1, 0, "")
+
+                            # Print options
+                            option_lines = self.get_option_lines()
+                            for index, line in enumerate(option_lines):
+                                line_position = self.title.count('\n') + 2 + index
                                 
-                                # Print asterisk in yellow if it's in the prefix
-                                if "*" in before:
-                                    asterisk_pos = before.find("*")
-                                    screen.addstr(line_position, 0, before[:asterisk_pos])
-                                    screen.addstr("*", YELLOW)  # Yellow asterisk
-                                    screen.addstr(before[asterisk_pos+1:])
-                                else:
-                                    screen.addstr(line_position, 0, before)
+                                # Skip if we're past the bottom of the screen
+                                if line_position >= max_y:
+                                    break
+                                
+                                if "\x01" in line and "\x02" in line:  # Special color indicators for green text
+                                    # Split line into parts before and after color indicators
+                                    before, rest = line.split("\x01", 1)
+                                    middle, after = rest.split("\x02", 1)
                                     
-                                # Print the selected text in green
-                                screen.addstr(middle, GREEN)  # Apply green color
-                                screen.addstr(after)
-                            else:
-                                # Regular line without color highlights for selection
-                                # But still highlight the asterisk in yellow if present
-                                if "*" in line:
-                                    asterisk_pos = line.find("*")
-                                    screen.addstr(line_position, 0, line[:asterisk_pos])
-                                    screen.addstr("*", YELLOW)  # Yellow asterisk
-                                    screen.addstr(line[asterisk_pos+1:])
+                                    # Truncate parts if combined length is too long
+                                    total_length = len(before) + len(middle) + len(after)
+                                    if total_length > max_x - 1:
+                                        # Prioritize showing the beginning with some of the middle
+                                        available_space = max_x - 1 - len(before) - 3  # -3 for "..."
+                                        if available_space > 0:
+                                            middle = middle[:available_space]
+                                            after = "..."
+                                        else:
+                                            # If even the prefix is too long, truncate it
+                                            before = before[:max_x - 4]
+                                            middle = ""
+                                            after = "..."
+                                    
+                                    # Print asterisk in yellow if it's in the prefix
+                                    if "*" in before:
+                                        asterisk_pos = before.find("*")
+                                        screen.addstr(line_position, 0, before[:asterisk_pos])
+                                        screen.addstr("*", YELLOW)  # Yellow asterisk
+                                        screen.addstr(before[asterisk_pos+1:])
+                                    else:
+                                        screen.addstr(line_position, 0, before)
+                                        
+                                    # Print the selected text in green
+                                    screen.addstr(middle, GREEN)  # Apply green color
+                                    screen.addstr(after)
                                 else:
-                                    screen.addstr(line_position, 0, line)
-                        
-                        # Move cursor to selected option
-                        screen.move(self.title.count('\n') + 2 + self.index, 0)
-                        # Refresh the screen
-                        screen.refresh()
+                                    # Regular line without color highlights for selection
+                                    # Truncate if too long
+                                    if len(line) > max_x - 1:
+                                        line = line[:max_x - 4] + "..."
+                                    
+                                    # But still highlight the asterisk in yellow if present
+                                    if "*" in line:
+                                        asterisk_pos = line.find("*")
+                                        screen.addstr(line_position, 0, line[:asterisk_pos])
+                                        screen.addstr("*", YELLOW)  # Yellow asterisk
+                                        screen.addstr(line[asterisk_pos+1:])
+                                    else:
+                                        screen.addstr(line_position, 0, line)
+                            
+                            # Move cursor to selected option if it's visible
+                            cursor_position = self.title.count('\n') + 2 + self.index
+                            if cursor_position < max_y:
+                                screen.move(cursor_position, 0)
+                            # Refresh the screen
+                            screen.refresh()
+                            
+                        except Exception as e:
+                            # Handle any errors gracefully
+                            # Clear screen and show error message
+                            screen.clear()
+                            error_msg = f"Display error: {str(e)[:max_x-20]}..."
+                            screen.addstr(0, 0, error_msg[:max_x-1])
+                            screen.refresh()
                         
                     # Create a custom picker with our handler
                     picker = Picker(options, get_dynamic_title(0), options_map_func=get_title_text)

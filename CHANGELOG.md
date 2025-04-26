@@ -5,6 +5,24 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2025-04-26
+
+### Fixed
+- Improved output formatting consistency across all modes:
+  - Standardized color scheme with yellow labels, white format strings, and green explanatory notes
+  - Removed redundant format information in the "dl" mode
+  - Fixed missing format information in the "fun" mode
+  - Ensured consistent styling between "dl" and "fun" modes
+- Fixed curses error in the "fun" search mode:
+  - Added terminal dimension detection to prevent text overflow
+  - Implemented text truncation with visual indicators for long text
+  - Added proper error handling to prevent crashes when displaying long artist names
+  - Enhanced terminal display code to handle various terminal sizes gracefully
+
+### Changed
+- Enhanced user experience with cleaner, more consistent output formatting
+- Improved error handling for better application stability
+
 ## [0.13.1.0] - 2025-04-09
 
 ### Fixed
