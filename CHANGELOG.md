@@ -5,6 +5,15 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.1] - 2025-04-27
+
+### Fixed
+- Enhanced URL parsing to support additional Qobuz URL formats:
+  - Added support for `/interpreter/` URLs by mapping them to artist type
+  - Improved regex pattern to handle label URLs with additional path segments like `/download-streaming-albums/`
+  - Added robust error handling for malformed URLs with informative error messages
+  - Fixed `'NoneType' object has no attribute 'groups'` error when downloading artist or label content
+
 ## [0.14.0] - 2025-04-26
 
 ### Fixed

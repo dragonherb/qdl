@@ -110,12 +110,15 @@ def smart_discography_filter(
         regex = TYPE_REGEXES[album_t]
         return re.search(regex, f"{title} {version}") is not None
 
-    def essence(album: dict) -> str:
+    def essence(album_title: str) -> str:
         """Ignore text in parens/brackets, return all lowercase.
         Used to group two albums that may be named similarly, but not exactly
         the same.
         """
-        r = re.match(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*", album)
+        r = re.match(r"([^\(]+)(?:\s*[\(\[][^\)][\)\]])*", album_title)
+        if r is None:
+            # If no match, return the original string stripped and lowercased
+            return album_title.strip().lower()
         return r.group(1).strip().lower()
 
     requested_artist = contents[0]["name"]
@@ -203,7 +206,20 @@ def get_url_info(url):
 
     r = re.search(
         r"(?:https:\/\/(?:w{3}|open|play)\.qobuz\.com)?(?:\/[a-z]{2}-[a-z]{2})"
-        r"?\/(album|artist|track|playlist|label)(?:\/[-\w\d]+)?\/([\w\d]+)",
+        r"?\/(album|artist|interpreter|track|playlist|label)(?:\/[-\w\d]+)?(?:\/[-\w\d]+)?\/([\w\d]+)",
         url,
     )
-    return r.groups()
+    
+    # Check if the regex matched before trying to access groups
+    if r is None:
+        logger.error(f"Invalid URL format: {url}")
+        raise ValueError(f"Could not parse URL: {url}. Please use URLs from play.qobuz.com")
+    
+    # Extract the type and ID
+    url_type, item_id = r.groups()
+    
+    # Map 'interpreter' to 'artist' for compatibility
+    if url_type == 'interpreter':
+        url_type = 'artist'
+        
+    return url_type, item_id
