@@ -84,6 +84,9 @@ class QobuzDL:
         self.current_naming_mode = current_naming_mode
         self.dynamic_naming_mode = dynamic_naming_mode
         
+        # Initialize a flag to prevent duplicate format display
+        self._from_dl_mode = False
+        
         # Read format configuration
         self.format_config = configparser.ConfigParser()
         
@@ -330,7 +333,8 @@ class QobuzDL:
                     track_format = self.format_config['DEFAULT']['default_track_format']
                     
                 # Only display format info if not coming from dl mode (where it's already shown)
-                if not from_dl_mode:
+                # Check both the from_dl_mode parameter and the class attribute
+                if not from_dl_mode and not getattr(self, '_from_dl_mode', False):
                     logger.info(f"{YELLOW}Track Format:{WHITE} {track_format} {GREEN}(Default){RESET}")
                     logger.info(f"{YELLOW}Folder Format:{WHITE} {folder_format} {GREEN}({naming_mode.replace('_', ' ').title()}){RESET}")
                     
@@ -611,8 +615,14 @@ class QobuzDL:
                                 logger.error(f"{RED}Error processing URL: {e}. Using handle_url.")
                                 self.handle_url(new_url)
                         else:
-                            # For other types (artist, label, playlist), use handle_url
-                            self.handle_url(new_url)
+                            # For other types (artist, label, playlist), set a flag to prevent duplicate format display
+                            self._from_dl_mode = True
+                            try:
+                                # Use handle_url with the flag set
+                                self.handle_url(new_url)
+                            finally:
+                                # Reset the flag after handle_url completes
+                                self._from_dl_mode = False
                         
                     except (KeyError, IndexError) as e:
                         logger.info(f'{RED}Error processing URL: {e}. Using original URL.')

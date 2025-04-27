@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented text truncation with visual indicators for long text
   - Added proper error handling to prevent crashes when displaying long artist names
   - Enhanced terminal display code to handle various terminal sizes gracefully
+- Fixed redundant format information display in DL mode:
+  - Eliminated duplicate "Track Format" and "Folder Format" lines when downloading artist or label content
+  - Ensured consistent output formatting across all download types
 
 ### Changed
 - Enhanced user experience with cleaner, more consistent output formatting
