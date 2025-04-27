@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "QDL"
-version = "0.12.0.0"
+version = "0.14.3"
 description = "The complete Lossless and Hi-Res music downloader for Qobuz"
 readme = "README.md"
 authors = [
@@ -25,6 +25,7 @@ dependencies = [
     "beautifulsoup4",
     "colorama",
     "googlesearch-python>=1.3.0",
+    "keyboard",
 ]
 
 [project.scripts]

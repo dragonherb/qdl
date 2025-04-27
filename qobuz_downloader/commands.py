@@ -157,6 +157,11 @@ def qdl_args(
         action="store_true",
         help="show configuration",
     )
+    parser.add_argument(
+        "-v", "--version",
+        action="store_true",
+        help="display current program version",
+    )
 
     subparsers = parser.add_subparsers(
         title="commands",

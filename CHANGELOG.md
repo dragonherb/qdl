@@ -5,6 +5,27 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.3] - 2025-04-27
+
+### Added
+- Version display functionality:
+  - Added `-v` and `--version` flags to display the current program version
+  - Updated help text to include the new version command
+  - Fixed version discrepancy between pyproject.toml and setup.py
+
+### Fixed
+- Resolved version inconsistency between configuration files
+- Added missing "keyboard" dependency to pyproject.toml
+
+## [0.14.2] - 2025-04-27
+
+### Added
+- Pause/unpause functionality for downloads:
+  - Press SPACEBAR during download to pause or resume the process
+  - Visual indicator showing [PAUSED] status in the progress bar
+  - Ability to pause and resume downloads without breaking execution
+  - Automatic cleanup of keyboard hooks when application exits
+
 ## [0.14.1] - 2025-04-27
 
 ### Fixed

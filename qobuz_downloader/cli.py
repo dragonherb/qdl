@@ -11,6 +11,9 @@ from qobuz_downloader.commands import qdl_args
 from qobuz_downloader.core import QobuzDL
 from qobuz_downloader.downloader import DEFAULT_FOLDER, DEFAULT_TRACK
 
+# Current version of QDL
+VERSION = "0.14.3"
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
@@ -63,6 +66,7 @@ def _reset_config(config_file):
     config["DEFAULT"]["embed_art"] = "false"
     config["DEFAULT"]["no_cover"] = "false"
     config["DEFAULT"]["no_database"] = "false"
+    config["DEFAULT"]["hide_quality_prompt"] = "false"
     logging.info(f"{YELLOW}Getting tokens. Please wait...")
     bundle = Bundle()
     config["DEFAULT"]["app_id"] = str(bundle.get_app_id())
@@ -175,7 +179,8 @@ def _remove_leftovers(directory):
 def _handle_commands(qobuz, arguments):
     try:
         if arguments.command == "dl":
-            qobuz.download_list_of_urls(arguments.SOURCE)
+            # Use the new direct_link_menu method for the dl command
+            qobuz.direct_link_menu(arguments.SOURCE)
         elif arguments.command == "lucky":
             query = " ".join(arguments.QUERY)
             qobuz.lucky_type = arguments.type
@@ -233,6 +238,12 @@ def main():
         app_id = config["DEFAULT"]["app_id"]
         smart_discography = config.getboolean("DEFAULT", "smart_discography")
         
+        # Get hide_quality_prompt setting
+        try:
+            hide_quality_prompt = config.getboolean("DEFAULT", "hide_quality_prompt")
+        except (KeyError, ValueError):
+            hide_quality_prompt = False
+        
         # Get folder_format and track_format if they exist, otherwise use None
         # This allows them to be commented out in config.ini when using format_config.ini
         try:
@@ -289,6 +300,9 @@ def main():
         _reset_config(CONFIG_FILE)
         sys.exit(f"{GREEN}Config file has been reset.")
 
+    if arguments.version:
+        sys.exit(f"{GREEN}QDL version: {VERSION}")
+
     if arguments.show_config:
         print(f"Configuration: {CONFIG_FILE}\nFormat Configuration: {FORMAT_CONFIG_FILE}\nDatabase: {QOBUZ_DB}\n---")
         print(f"{GREEN}Main config.ini:{YELLOW}")
@@ -326,6 +340,7 @@ def main():
         default_naming_mode=default_naming_mode,
         current_naming_mode=current_naming_mode,
         dynamic_naming_mode=dynamic_naming_mode,
+        hide_quality_prompt=hide_quality_prompt,
     )
     qobuz.initialize_client(email, password, app_id, secrets)
 

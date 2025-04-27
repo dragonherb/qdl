@@ -16,11 +16,12 @@ requirements = [
     "pick==1.6.0",
     "beautifulsoup4",
     "colorama",
+    "keyboard",
 ]
 
 setup(
     name=pkg_name,
-    version="0.13.1.0",
+    version="0.14.3",
     author="Dragonherb",
     author_email="dragonherbdj@gmail.com",
     description="The complete Lossless and Hi-Res music downloader for Qobuz",
