@@ -5,6 +5,16 @@ All notable changes to the QDL project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2025-04-28
+
+### Fixed
+- Improved spacebar functionality:
+  - Fixed spacebar responding when CMD window is not in focus
+  - Ensured spacebar messages only appear before each album download
+  - Fixed download not actually pausing when spacebar is pressed
+  - Restructured download loop for better pause/resume handling
+  - Added platform-specific keyboard input methods for better focus detection
+
 ## [0.14.3] - 2025-04-27
 
 ### Added

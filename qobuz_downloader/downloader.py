@@ -1,14 +1,87 @@
 import logging
 import os
+import time
+import threading
 from typing import Tuple
 
 import requests
+import threading
+import os
 from pathvalidate import sanitize_filename, sanitize_filepath
 from tqdm import tqdm
 
 import qobuz_downloader.metadata as metadata
-from qobuz_downloader.color import OFF, GREEN, RED, YELLOW, CYAN
+from qobuz_downloader.color import OFF, GREEN, RED, YELLOW, CYAN, WHITE
 from qobuz_downloader.exceptions import NonStreamable
+
+# Logger setup
+logger = logging.getLogger(__name__)
+
+# Global pause state
+paused = False
+# Flag to track if we're currently downloading
+is_downloading = False
+# Time when the spacebar message was last shown (to prevent showing it too often)
+last_message_time = 0
+
+# Setup keyboard input based on platform
+if os.name == 'nt':  # Windows
+    import msvcrt
+    
+    def check_for_spacebar_windows():
+        """Check if spacebar is pressed on Windows"""
+        if msvcrt.kbhit():
+            key = msvcrt.getch()
+            # 32 is the ASCII code for spacebar
+            return key == b' '
+        return False
+    
+    # Set the platform-specific function
+    check_for_spacebar = check_for_spacebar_windows
+else:  # Unix/Linux/Mac
+    # Fallback for non-Windows platforms
+    # This is a simple implementation that won't work well in all environments
+    # but it's better than nothing
+    import sys
+    import termios
+    import tty
+    import select
+    
+    def check_for_spacebar_unix():
+        """Check if spacebar is pressed on Unix-like systems"""
+        # Store original terminal settings
+        old_settings = termios.tcgetattr(sys.stdin)
+        try:
+            # Set terminal to raw mode
+            tty.setraw(sys.stdin.fileno())
+            # Check if there's input available
+            if select.select([sys.stdin], [], [], 0)[0]:
+                key = sys.stdin.read(1)
+                # Reset terminal
+                termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+                # Check if spacebar was pressed
+                return key == ' '
+            # Reset terminal
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+            return False
+        except:
+            # Reset terminal in case of error
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+            return False
+    
+    # Set the platform-specific function
+    check_for_spacebar = check_for_spacebar_unix
+
+def toggle_pause():
+    """Toggle the pause state"""
+    global paused
+    # Only toggle pause if we're actually downloading
+    if is_downloading:
+        paused = not paused
+        if paused:
+            logger.info(f"\n{WHITE}[Download PAUSED], press SPACEBAR to resume")
+        else:
+            logger.info(f"\n{WHITE}Download resumed")
 
 QL_DOWNGRADE = "FormatRestrictedByFormatAvailability"
 # used in case of error
@@ -91,6 +164,9 @@ class Download:
             f"\n{YELLOW}Downloading: {album_title}\nQuality: {file_format}"
             f" ({bit_depth}/{sampling_rate})\n"
         )
+        
+        # Show spacebar message before each album download
+        logger.info(f"{WHITE}Press SPACEBAR to pause/resume download")
         album_attr = self._get_album_attr(
             meta, album_title, file_format, bit_depth, sampling_rate
         )
@@ -140,6 +216,9 @@ class Download:
             track_title = _get_title(meta)
             artist = _safe_get(meta, "performer", "name")
             logger.info(f"\n{YELLOW}Downloading: {artist} - {track_title}")
+            
+            # Show spacebar message before each individual track download
+            logger.info(f"{WHITE}Press SPACEBAR to pause/resume download")
             format_info = self._get_format(meta, is_track_id=True, track_url_dict=parse)
             file_format, quality_met, bit_depth, sampling_rate = format_info
 
@@ -306,25 +385,79 @@ class Download:
 
 
 def tqdm_download(url, fname, desc):
-    r = requests.get(url, allow_redirects=True, stream=True)
-    total = int(r.headers.get("content-length", 0))
-    download_size = 0
-    with open(fname, "wb") as file, tqdm(
-        total=total,
-        unit="iB",
-        unit_scale=True,
-        unit_divisor=1024,
-        desc=desc,
-        bar_format=CYAN + "{n_fmt}/{total_fmt} /// {desc}",
-    ) as bar:
-        for data in r.iter_content(chunk_size=1024):
-            size = file.write(data)
-            bar.update(size)
-            download_size += size
+    global is_downloading, spacebar_message_shown, paused
+    
+    # Set the downloading flag to True
+    is_downloading = True
+    # Reset pause state at the start of each download
+    paused = False
+    
+    # We no longer show the spacebar message here
+    # It's now shown before each album or track download
+    
+    try:
+        r = requests.get(url, allow_redirects=True, stream=True)
+        total = int(r.headers.get("content-length", 0))
+        download_size = 0
+        
+        with open(fname, "wb") as file, tqdm(
+            total=total,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
+            desc=desc,
+            bar_format=CYAN + "{n_fmt}/{total_fmt} /// {desc}",
+        ) as bar:
+            # Create a generator for the content chunks
+            content_chunks = r.iter_content(chunk_size=1024)
+            
+            # Process chunks one by one
+            try:
+                while True:
+                    # Check for spacebar press to toggle pause
+                    if check_for_spacebar():
+                        toggle_pause()
+                    
+                    # Handle pause state
+                    if paused:
+                        bar.set_description_str(f"{desc} [PAUSED]")
+                        bar.refresh()
+                        
+                        # Stay in this loop until unpaused
+                        while paused:
+                            # Check for spacebar press to resume
+                            if check_for_spacebar():
+                                toggle_pause()
+                            time.sleep(0.1)
+                        
+                        # Reset description when unpaused
+                        bar.set_description_str(desc)
+                    
+                    # Get the next chunk (this will wait for network I/O)
+                    try:
+                        data = next(content_chunks)
+                    except StopIteration:
+                        break
+                    
+                    # Process the data chunk
+                    size = file.write(data)
+                    bar.update(size)
+                    download_size += size
+            except Exception as e:
+                logger.error(f"{RED}Error during download: {e}")
+                raise
+    finally:
+        # Reset the downloading flag when done
+        is_downloading = False
+        # Reset the pause state when done
+        paused = False
 
     if total != download_size:
         # https://stackoverflow.com/questions/69919912/requests-iter-content-thinks-file-is-complete-but-its-not
         raise ConnectionError("File download was interrupted for " + fname)
+    
+    # We no longer reset the spacebar_message_shown flag here
+    # It will persist across multiple downloads
 
 
 def _get_description(item: dict, track_title, multiple=None):

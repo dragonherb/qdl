@@ -12,7 +12,7 @@ from qobuz_downloader.core import QobuzDL
 from qobuz_downloader.downloader import DEFAULT_FOLDER, DEFAULT_TRACK
 
 # Current version of QDL
-VERSION = "0.14.3"
+VERSION = "0.15.0"
 
 logging.basicConfig(
     level=logging.INFO,
